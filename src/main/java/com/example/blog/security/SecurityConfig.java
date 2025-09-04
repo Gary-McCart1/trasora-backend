@@ -81,7 +81,8 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
-                "https://fce7b2595774.ngrok-free.app"   // Add your actual ngrok URL here!
+                "https://fce7b2595774.ngrok-free.app",   // Add your actual ngrok URL here!
+                "https://trasora-backend-e03193d24a86.herokuapp.com"
         ));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
         configuration.setAllowedHeaders(List.of("*"));
