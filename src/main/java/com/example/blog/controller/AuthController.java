@@ -128,14 +128,16 @@ public class AuthController {
     public ResponseEntity<?> logout(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(true) // set true in production
+                .secure(true) // set true only in prod
                 .path("/")
+                .sameSite("None")
                 .maxAge(0) // expire immediately
                 .build();
 
         response.setHeader("Set-Cookie", cookie.toString());
         return ResponseEntity.ok("Logged out successfully");
     }
+
 
     @GetMapping("/users")
     public ResponseEntity<List<UserDto>> getUsers() {
