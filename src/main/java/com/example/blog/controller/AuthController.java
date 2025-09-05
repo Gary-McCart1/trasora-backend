@@ -16,8 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,7 +41,8 @@ public class AuthController {
     }
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
-                          UserService userService, PasswordEncoder passwordEncoder, S3Service s3Service, UserRepository userRepository) {
+                          UserService userService, PasswordEncoder passwordEncoder,
+                          S3Service s3Service, UserRepository userRepository) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
@@ -52,22 +51,38 @@ public class AuthController {
         this.userRepository = userRepository;
     }
 
-    @GetMapping("/me")
-    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+    /** Utility: extract token from cookie or Authorization header */
+    private String extractToken(HttpServletRequest request) {
         String token = jwtUtil.extractTokenFromCookie(request);
-        if (token == null || !jwtUtil.validateToken(token)) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or missing token");
+        if (token == null) {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                token = authHeader.substring(7);
+            }
         }
+        return token;
+    }
 
+    /** Utility: validate & resolve current user */
+    private AppUser authenticateRequest(HttpServletRequest request) {
+        String token = extractToken(request);
+        if (token == null || !jwtUtil.validateToken(token)) {
+            throw new RuntimeException("Unauthorized: Invalid or missing token");
+        }
         String username = jwtUtil.extractUsername(token);
         AppUser user = userService.findByUsernameOrEmail(username);
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        if (user == null) throw new RuntimeException("User not found");
+        return user;
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
+        try {
+            AppUser user = authenticateRequest(request);
+            return ResponseEntity.ok(mapToUserDto(user));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        UserDto userDto = mapToUserDto(user);
-
-        return ResponseEntity.ok(userDto);
     }
 
     @PostMapping("/login")
@@ -84,28 +99,21 @@ public class AuthController {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Please verify your email before logging in.");
             }
 
-
             String token = jwtUtil.generateToken(user.getUsername());
 
             ResponseCookie cookie = ResponseCookie.from("jwt", token)
                     .httpOnly(true)
-                    .secure(true) // set true in production
+                    .secure(true) // true in prod
                     .path("/")
                     .sameSite("None")
                     .maxAge(Duration.ofDays(7))
                     .build();
-
             response.setHeader("Set-Cookie", cookie.toString());
 
-            // Assume false for isFollowing here (you can customize if needed)
-            AuthResponse authResponse = mapToAuthResponse(user, token, false);
-
-            return ResponseEntity.ok(authResponse);
-
+            return ResponseEntity.ok(mapToAuthResponse(user, token, false));
         } catch (Exception e) {
-            System.out.println("Login failed: " + e.getMessage());
-            Map<String, String> error = Map.of("message", "Invalid username or password");
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(Map.of("message", "Invalid username or password"));
         }
     }
 
@@ -114,95 +122,193 @@ public class AuthController {
         AppUser newUser = userService.registerUser(authRequest.getEmail(), authRequest.getUsername(),
                 authRequest.getPassword(), authRequest.getFullName());
 
-        // Generate verification token and save to user
         String token = userService.createVerificationToken(newUser);
-
-        // Send verification email
         userService.sendVerificationEmail(newUser.getEmail(), token);
 
         return ResponseEntity.ok("User registered successfully. Please check your email to verify your account.");
     }
 
-
     @PostMapping("/logout")
     public ResponseEntity<?> logout(HttpServletResponse response) {
         ResponseCookie cookie = ResponseCookie.from("jwt", "")
                 .httpOnly(true)
-                .secure(true) // set true only in prod
+                .secure(true)
                 .path("/")
                 .sameSite("None")
-                .maxAge(0) // expire immediately
+                .maxAge(0)
                 .build();
 
         response.setHeader("Set-Cookie", cookie.toString());
         return ResponseEntity.ok("Logged out successfully");
     }
 
-
     @GetMapping("/users")
     public ResponseEntity<List<UserDto>> getUsers() {
         List<AppUser> users = userService.getUsers();
-        List<UserDto> userDtos = users.stream()
-                .map(this::mapToUserDto)
-                .toList();
-        return ResponseEntity.ok(userDtos);
+        return ResponseEntity.ok(users.stream().map(this::mapToUserDto).toList());
     }
 
     @DeleteMapping("/user/{username}")
-    public ResponseEntity<?> deleteUser(@PathVariable String username, Authentication authentication) {
-        String loggedInUsername = authentication.getName();
-
-        if (!loggedInUsername.equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only delete your own account.");
+    public ResponseEntity<?> deleteUser(@PathVariable String username, HttpServletRequest request) {
+        try {
+            AppUser currentUser = authenticateRequest(request);
+            if (!currentUser.getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("You can only delete your own account.");
+            }
+            userService.deleteUser(username);
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        userService.deleteUser(username);
-        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/user/{username}")
     public ResponseEntity<UserDto> getUserByUsername(@PathVariable String username) {
         AppUser user = userService.getUserByUsername(username);
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
-        }
-        UserDto userDto = mapToUserDto(user);
-        return ResponseEntity.ok(userDto);
+        return user == null
+                ? ResponseEntity.status(HttpStatus.NOT_FOUND).build()
+                : ResponseEntity.ok(mapToUserDto(user));
     }
 
     @PutMapping(value = "/user", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> editUserProfile(
-            @AuthenticationPrincipal UserDetails userDetails,
+            HttpServletRequest request,
             @RequestPart(value = "bio", required = false) String bio,
             @RequestPart(value = "profilePic", required = false) MultipartFile profilePic,
             @RequestPart(value = "accentColor", required = false) String accentColor) throws IOException {
 
-        if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Not authenticated");
+        try {
+            AppUser currentUser = authenticateRequest(request);
+
+            String profilePicUrl = null;
+            if (profilePic != null && !profilePic.isEmpty()) {
+                profilePicUrl = s3Service.uploadFile(
+                        "profile-pictures/" + System.currentTimeMillis() + "-" + profilePic.getOriginalFilename(),
+                        profilePic.getInputStream(),
+                        profilePic.getSize(),
+                        profilePic.getContentType());
+            }
+
+            AppUser updatedUser = userService.editUser(
+                    currentUser.getUsername(),
+                    bio,
+                    profilePicUrl,
+                    accentColor);
+
+            return ResponseEntity.ok(mapToUserDto(updatedUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        String profilePicUrl = null;
-        if (profilePic != null && !profilePic.isEmpty()) {
-            profilePicUrl = s3Service.uploadFile(
-                    "profile-pictures/" + System.currentTimeMillis() + "-" + profilePic.getOriginalFilename(),
-                    profilePic.getInputStream(),
-                    profilePic.getSize(),
-                    profilePic.getContentType());
-        }
-
-        AppUser updatedUser = userService.editUser(
-                userDetails.getUsername(),
-                bio,
-                profilePicUrl,
-                accentColor);
-
-        UserDto updatedUserDto = mapToUserDto(updatedUser);
-
-        return ResponseEntity.ok(updatedUserDto);
     }
 
+    @PutMapping("/{username}/profile-visibility")
+    public ResponseEntity<?> updateProfileVisibility(
+            @PathVariable String username,
+            @RequestParam boolean profilePublic,
+            HttpServletRequest request) {
+        try {
+            AppUser currentUser = authenticateRequest(request);
+            if (!currentUser.getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            AppUser updatedUser = userService.updateProfileVisibility(username, profilePublic);
+            return ResponseEntity.ok(mapToUserDto(updatedUser));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
 
-    // Mapping helpers - ideally move to service or a dedicated mapper class
+    @PutMapping("/user/{username}/disconnect-spotify")
+    public ResponseEntity<?> disconnectSpotify(
+            @PathVariable String username,
+            HttpServletRequest request) {
+        try {
+            AppUser currentUser = authenticateRequest(request);
+            if (!currentUser.getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "You can only disconnect your own Spotify account."));
+            }
+            userService.disconnectSpotify(username);
+            return ResponseEntity.ok(Map.of("message", "Spotify account disconnected", "spotifyConnected", false));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/user/{username}/referred-by")
+    public ResponseEntity<?> updateReferredBy(
+            @PathVariable String username,
+            @RequestParam String referredByUsername,
+            HttpServletRequest request) {
+        try {
+            AppUser currentUser = authenticateRequest(request);
+            if (!currentUser.getUsername().equals(username)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(Map.of("message", "You can only update your own referredBy field."));
+            }
+            AppUser updatedUser = userService.updateReferredBy(username, referredByUsername);
+            return ResponseEntity.ok(mapToUserDto(updatedUser));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/referral-leaderboard")
+    public List<ReferralDto> getReferralLeaderboard() {
+        return userService.getReferralLeaderboard();
+    }
+
+    @GetMapping("/search")
+    public ResponseEntity<Map<String, Object>> searchUsers(@RequestParam String q) {
+        List<AppUser> users = userService.searchUsersByUsername(q, 5);
+        return ResponseEntity.ok(Map.of("users", users));
+    }
+
+    @GetMapping("/search-bar")
+    public ResponseEntity<Map<String, Object>> searchBarUsers(@RequestParam String q) {
+        List<UserDto> userDtos = userService.searchUsersByUsername(q, 5).stream()
+                .map(this::mapToUserDto).toList();
+        return ResponseEntity.ok(Map.of("users", userDtos));
+    }
+
+    @GetMapping("/verify-email")
+    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
+        Optional<AppUser> userOpt = userService.findByVerificationToken(token);
+        if (userOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body("Invalid verification token");
+        }
+        AppUser user = userOpt.get();
+        user.setVerified(true);
+        user.setVerificationToken(null);
+        userRepository.save(user);
+        return ResponseEntity.ok("Email verified successfully");
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        try {
+            boolean sent = userService.sendPasswordResetEmail(email);
+            if (!sent) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(Map.of("message", "No account found for email: " + email));
+            }
+            return ResponseEntity.ok(Map.of("message", "Password reset email sent if the account exists."));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError()
+                    .body(Map.of("message", "An error occurred. Try again later."));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest req) {
+        userService.resetPassword(req.getToken(), req.getNewPassword());
+        return ResponseEntity.ok().build();
+    }
+
+    /** --- Mappers --- */
     private UserDto mapToUserDto(AppUser user) {
         return new UserDto(
                 user.getId(),
@@ -238,132 +344,5 @@ public class AuthController {
                 isFollowing,
                 user.isProfilePublic()
         );
-    }
-
-    @GetMapping("/search")
-    public ResponseEntity<Map<String, Object>> searchUsers(@RequestParam String q) {
-        List<AppUser> users = userService.searchUsersByUsername(q, 5); // limit 5 results
-        Map<String, Object> response = new HashMap<>();
-        response.put("users", users);
-        return ResponseEntity.ok(response);
-    }
-
-    @GetMapping("/search-bar")
-    public ResponseEntity<Map<String, Object>> searchBarUsers(@RequestParam String q) {
-        List<AppUser> users = userService.searchUsersByUsername(q, 5); // limit 5 results
-
-        // Map each AppUser to UserDto
-        List<UserDto> userDtos = users.stream()
-                .map(this::mapToUserDto)
-                .toList();
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("users", userDtos);
-        return ResponseEntity.ok(response);
-    }
-
-
-    @GetMapping("/verify-email")
-    public ResponseEntity<String> verifyEmail(@RequestParam String token) {
-        Optional<AppUser> userOpt = userService.findByVerificationToken(token);
-        if (userOpt.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid verification token");
-        }
-        AppUser user = userOpt.get();
-        user.setVerified(true);
-        user.setVerificationToken(null);
-        userRepository.save(user);
-        return ResponseEntity.ok("Email verified successfully");
-    }
-
-
-    @PostMapping("/forgot-password")
-    public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        try {
-            boolean sent = userService.sendPasswordResetEmail(email);
-            if (!sent) {
-                // Example: your service returns false if user not found
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(Map.of("message", "No account found for email: " + email));
-            }
-            return ResponseEntity.ok(Map.of("message", "Password reset email sent if the account exists."));
-        } catch (Exception e) {
-            // Log the exception on server side for debugging
-            e.printStackTrace();
-            // Return a user-friendly error message
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("message", "An error occurred while processing your request. Please try again later."));
-        }
-    }
-
-
-    @PostMapping("/reset-password")
-    public ResponseEntity<?> resetPassword(@RequestBody ResetPasswordRequest req) {
-        userService.resetPassword(req.getToken(), req.getNewPassword());
-        return ResponseEntity.ok().build();
-    }
-
-    @PutMapping("/{username}/profile-visibility")
-    public ResponseEntity<UserDto> updateProfileVisibility(
-            @PathVariable String username,
-            @RequestParam boolean profilePublic,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        if (!userDetails.getUsername().equals(username)) {
-            return ResponseEntity.status(403).build(); // Forbidden
-        }
-
-        AppUser updatedUser = userService.updateProfileVisibility(username, profilePublic);
-        return ResponseEntity.ok(mapToUserDto(updatedUser));
-    }
-
-    @PutMapping("/user/{username}/disconnect-spotify")
-    public ResponseEntity<?> disconnectSpotify(
-            @PathVariable String username,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        if (userDetails == null || !userDetails.getUsername().equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "You can only disconnect your own Spotify account."));
-        }
-
-        userService.disconnectSpotify(username);
-
-        return ResponseEntity.ok(Map.of(
-                "message", "Spotify account disconnected successfully",
-                "spotifyConnected", false
-        ));
-    }
-
-    @PutMapping("/user/{username}/referred-by")
-    public ResponseEntity<?> updateReferredBy(
-            @PathVariable String username,
-            @RequestParam String referredByUsername,
-            @AuthenticationPrincipal UserDetails userDetails
-    ) {
-        // Ensure user is authenticated and updating their own referredBy
-        if (userDetails == null || !userDetails.getUsername().equals(username)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(Map.of("message", "You can only update your own referredBy field."));
-        }
-
-        try {
-            AppUser updatedUser = userService.updateReferredBy(username, referredByUsername);
-            return ResponseEntity.ok(mapToUserDto(updatedUser));
-        } catch (IllegalArgumentException e) {
-            // Handles self-referral case
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(Map.of("message", e.getMessage()));
-        } catch (RuntimeException e) {
-            // Handles other errors, e.g., referred username not found
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(Map.of("message", e.getMessage()));
-        }
-    }
-
-    @GetMapping("/referral-leaderboard")
-    public List<ReferralDto> getReferralLeaderboard() {
-        return userService.getReferralLeaderboard();
     }
 }
