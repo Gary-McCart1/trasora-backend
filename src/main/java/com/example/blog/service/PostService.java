@@ -94,7 +94,7 @@ public class PostService {
     }
 
     public PostDto createPost(PostDto postDto, MultipartFile mediaFile) {
-        System.out.println("Uploading media file: contentType=" + mediaFile.getContentType());
+
 
         AppUser user = userRepository.findByUsername(postDto.getAuthorUsername())
                 .orElseThrow(() -> new RuntimeException("No user found with username: " + postDto.getAuthorUsername()));
