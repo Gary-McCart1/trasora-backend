@@ -41,18 +41,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = jwtUtil.extractTokenFromCookie(request);
-        System.out.println("JWT Token from cookie: " + token);
+        String jwt = null;
+        String username = null;
 
-        if (token == null) {
-            filterChain.doFilter(request, response);
-            return;
+        // First, check the Authorization header for a Bearer token
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            jwt = authHeader.substring(7);
+            username = jwtUtil.extractUsername(jwt);
+        } else {
+            // If not found, fall back to checking the cookie
+            jwt = jwtUtil.extractTokenFromCookie(request);
+            if (jwt != null) {
+                username = jwtUtil.extractUsername(jwt);
+            }
         }
 
-        String username = jwtUtil.extractUsername(token);
-
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(token)) {
+            if (jwtUtil.validateToken(jwt)) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
 
                 UsernamePasswordAuthenticationToken authToken =
@@ -60,9 +66,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
-
-                System.out.println("Authenticated user: " + userDetails.getUsername());
-                System.out.println("Authorities: " + userDetails.getAuthorities());
             }
         }
 

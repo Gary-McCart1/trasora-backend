@@ -53,20 +53,26 @@ public class AuthController {
 
     /** Utility: extract token from cookie or Authorization header */
     private String extractToken(HttpServletRequest request) {
-        String token = jwtUtil.extractTokenFromCookie(request);
-        if (token == null) {
-            String authHeader = request.getHeader("Authorization");
-            if (authHeader != null && authHeader.startsWith("Bearer ")) {
-                token = authHeader.substring(7);
-            }
+        // Prioritize Authorization header first
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
         }
-        return token;
+
+        // Fallback to cookie
+        String token = jwtUtil.extractTokenFromCookie(request);
+        if (token != null) {
+            return token;
+        }
+
+        // If no token is found, throw an exception
+        throw new RuntimeException("Unauthorized: Invalid or missing token");
     }
 
     /** Utility: validate & resolve current user */
     private AppUser authenticateRequest(HttpServletRequest request) {
         String token = extractToken(request);
-        if (token == null || !jwtUtil.validateToken(token)) {
+        if (!jwtUtil.validateToken(token)) {
             throw new RuntimeException("Unauthorized: Invalid or missing token");
         }
         String username = jwtUtil.extractUsername(token);
@@ -86,7 +92,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<?> login(@RequestBody LoginRequest request, HttpServletResponse response) {
+    public ResponseEntity<?> login(@RequestBody LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getLogin(), request.getPassword())
@@ -101,16 +107,17 @@ public class AuthController {
 
             String token = jwtUtil.generateToken(user.getUsername());
 
-            ResponseCookie cookie = ResponseCookie.from("jwt", token)
-                    .httpOnly(true)
-                    .secure(true) // true in prod
-                    .path("/")
-                    .sameSite("None")
-                    .maxAge(Duration.ofDays(7))
-                    .build();
-            response.setHeader("Set-Cookie", cookie.toString());
+            // Remove cookie creation and setting
+            // ResponseCookie cookie = ResponseCookie.from("jwt", token) ...;
+            // response.setHeader("Set-Cookie", cookie.toString());
 
-            return ResponseEntity.ok(mapToAuthResponse(user, token, false));
+            // Return the JWT token and user data in the response body
+            Map<String, Object> responseData = new HashMap<>();
+            responseData.put("token", token);
+            responseData.put("user", mapToUserDto(user));
+
+            return ResponseEntity.ok(responseData);
+
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid username or password"));
