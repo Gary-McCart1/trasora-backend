@@ -38,7 +38,7 @@ public class RootController {
                 saved.getAlbumArtUrl(),
                 saved.getTrackId(),
                 saved.getPosition(),
-                saved.getUser().getUsername() // only username, no full user object
+                saved.getUser().getUsername()
         );
 
         return ResponseEntity.ok(responseDto);
