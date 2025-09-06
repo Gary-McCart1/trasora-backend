@@ -1,6 +1,7 @@
 package com.example.blog.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -43,6 +44,7 @@ public class Post {
     private String customImageUrl;  // S3 image if uploaded
     private String s3Key;           // S3 key (for deletion)
 
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", timezone = "UTC")
     @CreationTimestamp
     private LocalDateTime createdAt;       // Unix timestamp or use @CreationTimestamp with ZonedDateTime
 
