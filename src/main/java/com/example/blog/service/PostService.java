@@ -12,6 +12,8 @@ import com.example.blog.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.*;
@@ -20,6 +22,7 @@ import java.util.stream.Collectors;
 @Service
 public class PostService {
 
+    private static final Logger log = LoggerFactory.getLogger(PostService.class);
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final CommentRepository commentRepository;
@@ -94,8 +97,6 @@ public class PostService {
     }
 
     public PostDto createPost(PostDto postDto, MultipartFile mediaFile) {
-
-
         AppUser user = userRepository.findByUsername(postDto.getAuthorUsername())
                 .orElseThrow(() -> new RuntimeException("No user found with username: " + postDto.getAuthorUsername()));
 
@@ -114,6 +115,8 @@ public class PostService {
                     customImageUrl = uploadedUrl;
                 }
             } catch (IOException e) {
+                // Log the exception to get more details on the cause of the failure
+                log.error("Error during media file upload: {}", e.getMessage(), e);
                 throw new RuntimeException("Failed to upload media file", e);
             }
         }
