@@ -211,7 +211,7 @@ public class UserService {
     }
 
     public void sendVerificationEmail(String email, String token) {
-        String url = "http://localhost:3000/verify-email?token=" + token;
+        String url = "http://https://trasora-frontend-web.vercel.app/verify-email?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
