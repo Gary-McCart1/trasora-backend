@@ -321,6 +321,23 @@ public class AuthController {
         return ResponseEntity.ok().build();
     }
 
+    @PostMapping("/resend-verification")
+    public ResponseEntity<?> resendVerification(@RequestBody Map<String, String> request) {
+        String email = request.get("email");
+        AppUser user = userService.findByUsernameOrEmail(email);
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("message", "User not found"));
+        }
+        if (user.isVerified()) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("message", "User already verified"));
+        }
+        String token = userService.createVerificationToken(user);
+        userService.sendVerificationEmail(user.getEmail(), token);
+        return ResponseEntity.ok(Map.of("message", "Verification email sent"));
+    }
+
     /** --- Mappers --- */
     private UserDto mapToUserDto(AppUser user) {
         return new UserDto(
