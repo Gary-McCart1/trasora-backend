@@ -237,7 +237,7 @@ public class UserService {
         user.setPasswordResetTokenExpiry(LocalDateTime.now().plusHours(1));
         userRepository.save(user);
 
-        String resetLink = "http://localhost:3000/reset-password?token=" + token;
+        String resetLink = "http://https://trasora-frontend-web.vercel.app/reset-password?token=" + token;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());
         message.setSubject("Password Reset Request");
