@@ -45,10 +45,15 @@ public class CommentService {
 
     public CommentDto mapToDto(Comment comment) {
         CommentDto dto = new CommentDto();
+        dto.setId(comment.getId());  // <-- populate the comment ID
         dto.setPostId(comment.getPost().getId());
         dto.setCommentText(comment.getCommentText());
+        dto.setAuthorUsername(comment.getAuthor().getUsername());  // <-- populate username
+        dto.setAuthorProfilePictureUrl(comment.getAuthor().getProfilePictureUrl()); // <-- populate profile picture
+        dto.setCreatedAt(comment.getCreatedAt()); // <-- populate creation timestamp
         return dto;
     }
+
 
     public List<CommentDto> mapToDtoList(List<Comment> comments) {
         return comments.stream()
