@@ -144,14 +144,14 @@ public class UserService {
     }
 
     @Transactional
-    public AppUser editUser(String username, String bio, String profilePictureUrl, String accentColor) {
+    public AppUser editUser(String username, String bio, String profilePictureUrl, String accentColor, AppUser referredByUsername) {
         AppUser user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
         user.setBio(bio);
         if (accentColor != null) user.setAccentColor(accentColor);
         if (profilePictureUrl != null) user.setProfilePictureUrl(profilePictureUrl);
-
+        if (referredByUsername != null) user.setReferredBy(referredByUsername.getUsername());
         return userRepository.save(user);
     }
 

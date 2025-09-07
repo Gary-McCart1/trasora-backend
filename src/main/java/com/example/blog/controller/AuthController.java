@@ -181,6 +181,7 @@ public class AuthController {
     public ResponseEntity<?> editUserProfile(
             HttpServletRequest request,
             @RequestPart(value = "bio", required = false) String bio,
+            @RequestPart(value = "referredBy", required = false) String referredUsername,
             @RequestPart(value = "profilePic", required = false) MultipartFile profilePic,
             @RequestPart(value = "accentColor", required = false) String accentColor) throws IOException {
 
@@ -195,12 +196,17 @@ public class AuthController {
                         profilePic.getSize(),
                         profilePic.getContentType());
             }
+            AppUser referredByUser = null;
+            if (referredUsername != null) {
+                referredByUser = userRepository.findByUsername(referredUsername)
+                        .orElseThrow(() -> new RuntimeException("Referrer not found"));
+            }
 
             AppUser updatedUser = userService.editUser(
                     currentUser.getUsername(),
                     bio,
                     profilePicUrl,
-                    accentColor);
+                    accentColor, referredByUser);
 
             return ResponseEntity.ok(mapToUserDto(updatedUser));
         } catch (RuntimeException e) {
