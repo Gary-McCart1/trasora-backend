@@ -339,7 +339,9 @@ public class AuthController {
                 user.isProfilePublic(),
                 user.getBranchCount(),
                 user.isSpotifyPremium(),
-                user.getReferredBy()
+                user.getReferredBy() != null && !user.getReferredBy().isBlank()
+                        ? user.getReferredBy()
+                        : null
         );
     }
 
