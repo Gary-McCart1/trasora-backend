@@ -1,5 +1,6 @@
 package com.example.blog.service;
 
+import com.example.blog.dto.CommentDto;
 import com.example.blog.dto.PostDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.entity.Comment;
@@ -29,19 +30,21 @@ public class PostService {
     private final S3Service s3Service;
     private final NotificationService notificationService;
     private final FollowService followService;
+    private final CommentService commentService;
 
     public PostService(PostRepository postRepository,
                        UserRepository userRepository,
                        CommentRepository commentRepository,
                        S3Service s3Service,
                        NotificationService notificationService,
-                       FollowService followService) {
+                       FollowService followService, CommentService commentService) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
         this.s3Service = s3Service;
         this.notificationService = notificationService;
         this.followService = followService;
+        this.commentService = commentService;
     }
 
     private String uploadMediaToS3(MultipartFile mediaFile) throws IOException {
@@ -223,7 +226,7 @@ public class PostService {
         postRepository.save(post);
     }
 
-    public void addComment(Long postId, String commentText, AppUser currentUser) {
+    public CommentDto addComment(Long postId, String commentText, AppUser currentUser) {
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
@@ -248,6 +251,8 @@ public class PostService {
                 null,
                 null
         );
+
+        return commentService.mapToDto(comment);
     }
 
     /* ------------------------ Helper: Private Post Visibility ------------------------ */
