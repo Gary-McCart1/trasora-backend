@@ -231,6 +231,7 @@ public class UserService {
         Optional<AppUser> optionalUser = userRepository.findByEmail(email);
         if (optionalUser.isEmpty()) return false;
 
+        System.out.println("Hello");
         AppUser user = optionalUser.get();
         String token = UUID.randomUUID().toString();
         user.setPasswordResetToken(token);
@@ -242,7 +243,13 @@ public class UserService {
         message.setTo(user.getEmail());
         message.setSubject("Password Reset Request");
         message.setText("Click the link below to reset your password:\n" + resetLink);
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            e.printStackTrace(); // will show the exact SMTP exception
+            throw new RuntimeException("Failed to send email: " + e.getMessage());
+        }
+
 
         return true;
     }
