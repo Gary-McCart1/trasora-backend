@@ -211,7 +211,7 @@ public class UserService {
     }
 
     public void sendVerificationEmail(String email, String token) {
-        String url = "http://https://trasora-frontend-web.vercel.app/verify-email?token=" + token;
+        String url = "https://trasora-frontend-web.vercel.app/verify-email?token=" + token;
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(email);
@@ -237,7 +237,7 @@ public class UserService {
         user.setPasswordResetTokenExpiry(LocalDateTime.now().plusHours(1));
         userRepository.save(user);
 
-        String resetLink = "http://https://trasora-frontend-web.vercel.app/reset-password?token=" + token;
+        String resetLink = "https://trasora-frontend-web.vercel.app/reset-password?token=" + token;
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(user.getEmail());
         message.setSubject("Password Reset Request");
