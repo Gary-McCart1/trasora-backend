@@ -1,5 +1,6 @@
 package com.example.blog.controller;
 
+import com.example.blog.dto.CommentDto;
 import com.example.blog.dto.PostDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.repository.UserRepository;
@@ -123,7 +124,7 @@ public class PostController {
     }
 
     @PostMapping("/{postId}/comments")
-    public ResponseEntity<Void> addComment(
+    public ResponseEntity<CommentDto> addComment(
             @PathVariable Long postId,
             @RequestBody String commentText,
             @AuthenticationPrincipal UserDetails principal
@@ -131,9 +132,10 @@ public class PostController {
         AppUser currentUser = getAppUserFromPrincipal(principal);
         if (currentUser == null) return ResponseEntity.status(403).build();
 
-        postService.addComment(postId, commentText, currentUser);
-        return ResponseEntity.ok().build();
+        CommentDto comment = postService.addComment(postId, commentText, currentUser);
+        return ResponseEntity.ok(comment);
     }
+
 
     @PostMapping("/{postId}/like")
     public ResponseEntity<Void> likePost(

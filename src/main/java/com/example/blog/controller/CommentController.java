@@ -27,10 +27,12 @@ public class CommentController {
     }
 
     @PostMapping
-    public ResponseEntity<CommentDto> createComment(@RequestBody CommentDto commentDto){
-        Comment createdComment = commentService.createComment(commentDto);
-        CommentDto createdCommentDto = commentService.mapToDto(createdComment);
-        return ResponseEntity.ok(createdCommentDto);
+    public ResponseEntity<CommentDto> createComment(
+            @RequestParam Long postId,
+            @RequestBody String commentText
+    ) {
+        CommentDto createdComment = commentService.createComment(postId, commentText);
+        return ResponseEntity.ok(createdComment);
     }
 
     @GetMapping("/{id}")

@@ -65,22 +65,23 @@ public class CommentService {
                 .orElseThrow(() -> new RuntimeException("No comment found with the ID: " + id));
     }
 
-    public Comment createComment(CommentDto commentDto) {
+    public CommentDto createComment(Long postId, String commentText) {
         AppUser currentUser = getCurrentUser();
 
-        Post post = postRepository.findById(commentDto.getPostId())
-                .orElseThrow(() -> new RuntimeException("Post not found with the ID: " + commentDto.getPostId()));
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new RuntimeException("Post not found with the ID: " + postId));
 
         Comment newComment = Comment.builder()
-                .commentText(commentDto.getCommentText())
+                .commentText(commentText)
                 .post(post)
                 .author(currentUser)
                 .build();
 
         Comment savedComment = commentRepository.save(newComment);
 
-        return savedComment;
+        return mapToDto(savedComment);
     }
+
 
     public Comment editComment(Long id, CommentDto commentDto) {
         Comment editComment = commentRepository.findById(id)
