@@ -294,7 +294,7 @@ public class AuthController {
             // Instead of just saying invalid, check if it's already verified
             Optional<AppUser> alreadyVerified = userService.findByTokenEvenIfNull(token);
             if (alreadyVerified.isPresent() && alreadyVerified.get().isVerified()) {
-                return ResponseEntity.badRequest().body(Map.of(
+                return ResponseEntity.ok(Map.of(
                         "status", "success",
                         "message", "Email already verified"
                 ));
@@ -307,7 +307,7 @@ public class AuthController {
 
         AppUser user = userOpt.get();
         if (user.isVerified()) {
-            return ResponseEntity.badRequest().body(Map.of(
+            return ResponseEntity.ok(Map.of(
                     "status", "success",
                     "message", "Email already verified"
             ));
