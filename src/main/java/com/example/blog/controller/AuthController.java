@@ -291,24 +291,33 @@ public class AuthController {
         Optional<AppUser> userOpt = userService.findByVerificationToken(token);
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(Map.of(
-                            "status", "error",
-                            "message", "Invalid or expired verification token"
-                    ));
+            // maybe the user is already verified
+            Optional<AppUser> alreadyVerified = userService.findByVerificationToken(token);
+            // ^ you might need a method to find user by email instead, depending on schema
+            // Or just return "already verified" if token is missing.
+
+            return ResponseEntity.badRequest().body(
+                    Map.of("status", "error", "message", "Invalid or expired verification token")
+            );
         }
 
         AppUser user = userOpt.get();
+
+        if (user.isVerified()) {
+            return ResponseEntity.ok(
+                    Map.of("status", "success", "message", "Email is already verified")
+            );
+        }
+
         user.setVerified(true);
         user.setVerificationToken(null);
         userRepository.save(user);
 
-        return ResponseEntity.ok(Map.of(
-                "status", "success",
-                "message", "Email verified successfully"
-        ));
+        return ResponseEntity.ok(
+                Map.of("status", "success", "message", "Email verified successfully")
+        );
     }
+
 
 
 
