@@ -295,7 +295,7 @@ public class AuthController {
             Optional<AppUser> alreadyVerified = userService.findByTokenEvenIfNull(token);
             if (alreadyVerified.isPresent() && alreadyVerified.get().isVerified()) {
                 return ResponseEntity.badRequest().body(Map.of(
-                        "status", "error",
+                        "status", "success",
                         "message", "Email already verified"
                 ));
             }
