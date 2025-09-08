@@ -287,13 +287,15 @@ public class AuthController {
     }
 
     @GetMapping("/verify-email")
-    public ResponseEntity<Map<String, Object>> verifyEmail(@RequestParam String token) {
+    public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
         Optional<AppUser> userOpt = userService.findByVerificationToken(token);
+
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest()
+            return ResponseEntity
+                    .badRequest()
                     .body(Map.of(
                             "status", "error",
-                            "message", "Invalid verification token"
+                            "message", "Invalid or expired verification token"
                     ));
         }
 
@@ -302,13 +304,12 @@ public class AuthController {
         user.setVerificationToken(null);
         userRepository.save(user);
 
-        return ResponseEntity.ok(
-                Map.of(
-                        "status", "success",
-                        "message", "Email verified successfully"
-                )
-        );
+        return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Email verified successfully"
+        ));
     }
+
 
 
     @PostMapping("/forgot-password")
