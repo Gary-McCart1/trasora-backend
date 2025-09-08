@@ -34,6 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         // Skip JWT validation for OPTIONS and public auth endpoints
         if ("OPTIONS".equalsIgnoreCase(request.getMethod()) ||
+                path.startsWith("/auth/spotify") ||
                 path.startsWith("/api/auth/login") ||
                 path.startsWith("/api/auth/signup") ||
                 path.startsWith("/api/auth/logout")) {

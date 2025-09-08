@@ -70,7 +70,6 @@ public class SpotifyAuthController {
                 .build();
     }
 
-
     /**
      * Spotify OAuth callback.
      * Extract 'state' param to get your app username, then redirect there.
