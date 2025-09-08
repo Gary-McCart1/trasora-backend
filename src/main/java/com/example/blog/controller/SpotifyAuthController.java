@@ -172,7 +172,7 @@ public class SpotifyAuthController {
                     .build();
 
             String username = (state != null && !state.isEmpty()) ? state : "defaultUser";
-            String frontendBaseUrl = "http://localhost:3000"; // make configurable if needed
+            String frontendBaseUrl = "https://trasora-frontend-web.vercel.app"; // make configurable if needed
             String redirectUrl = frontendBaseUrl + "/profile/" + username;
 
             HttpHeaders redirectHeaders = new HttpHeaders();
