@@ -308,7 +308,7 @@ public class AuthController {
         AppUser user = userOpt.get();
         if (user.isVerified()) {
             return ResponseEntity.badRequest().body(Map.of(
-                    "status", "error",
+                    "status", "success",
                     "message", "Email already verified"
             ));
         }
