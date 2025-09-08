@@ -374,5 +374,10 @@ public class UserService {
                 .collect(Collectors.toList());
     }
 
+    public Optional<AppUser> findByTokenEvenIfNull(String token) {
+        return userRepository.findByVerificationToken(token)
+                .or(() -> userRepository.findByEmail(token)); // only works if you pass email instead of random token
+    }
+
 
 }
