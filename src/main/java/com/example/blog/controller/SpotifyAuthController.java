@@ -41,23 +41,17 @@ public class SpotifyAuthController {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    /**
-     * Start Spotify OAuth login.
-     * Pass your app username in 'state' query param.
-     */
     @GetMapping("/login")
     public ResponseEntity<Void> login(@RequestParam(required = false) String state) {
-        System.out.println(redirectUri);
         String scopes = "user-read-email user-read-private streaming playlist-modify-public playlist-modify-private "
                 + "user-read-playback-state user-modify-playback-state user-read-currently-playing";
-
 
         String authUrl = "https://accounts.spotify.com/authorize"
                 + "?client_id=" + clientId
                 + "&response_type=code"
                 + "&redirect_uri=" + UriUtils.encode(redirectUri, StandardCharsets.UTF_8)
                 + "&scope=" + UriUtils.encode(scopes, StandardCharsets.UTF_8)
-                + "&show_dialog=true"; // force Spotify to always ask user to authorize
+                + "&show_dialog=true";
 
         if (state != null && !state.isEmpty()) {
             authUrl += "&state=" + UriUtils.encode(state, StandardCharsets.UTF_8);
@@ -70,17 +64,12 @@ public class SpotifyAuthController {
                 .build();
     }
 
-    /**
-     * Spotify OAuth callback.
-     * Extract 'state' param to get your app username, then redirect there.
-     */
     @GetMapping("/callback")
     public ResponseEntity<?> callback(
             @RequestParam(required = false) String code,
             @RequestParam(required = false) String error,
             @RequestParam(required = false) String state) {
 
-        System.out.println(redirectUri);
         logger.info("==== SPOTIFY CALLBACK HIT ====");
         logger.info("Authorization code: {}", code);
         logger.info("Error param: {}", error);
@@ -99,7 +88,7 @@ public class SpotifyAuthController {
         }
 
         try {
-            // Prepare token request to Spotify
+            // Exchange code for access/refresh tokens
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
             String auth = clientId + ":" + clientSecret;
@@ -122,7 +111,7 @@ public class SpotifyAuthController {
             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
                 logger.error("Failed to retrieve Spotify tokens: {}", response.getBody());
                 return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                        .body(Map.of("error", "Failed to retrieve Spotify tokens"));
+                        .body(Map.of("error", "Failed to retrieve Spotify tokens", "details", response.getBody()));
             }
 
             Map<String, Object> tokenResponse = response.getBody();
@@ -131,29 +120,48 @@ public class SpotifyAuthController {
 
             boolean isPremium = false;
 
-            // Check Spotify profile to see if user has premium
+            // Fetch Spotify profile
             if (accessToken != null) {
                 HttpHeaders profileHeaders = new HttpHeaders();
                 profileHeaders.setBearerAuth(accessToken);
                 HttpEntity<Void> profileRequest = new HttpEntity<>(profileHeaders);
 
-                ResponseEntity<Map> profileResponse = restTemplate.exchange(
-                        "https://api.spotify.com/v1/me",
-                        HttpMethod.GET,
-                        profileRequest,
-                        Map.class
-                );
+                try {
+                    ResponseEntity<Map> profileResponse = restTemplate.exchange(
+                            "https://api.spotify.com/v1/me",
+                            HttpMethod.GET,
+                            profileRequest,
+                            Map.class
+                    );
 
-                if (profileResponse.getStatusCode().is2xxSuccessful() && profileResponse.getBody() != null) {
-                    String product = (String) profileResponse.getBody().get("product");
-                    isPremium = "premium".equalsIgnoreCase(product);
-                    logger.info("Spotify product for user {}: {}", state, product);
-                } else {
-                    logger.warn("Failed to fetch Spotify profile for user: {}", state);
+                    if (profileResponse.getStatusCode().is2xxSuccessful() && profileResponse.getBody() != null) {
+                        String product = (String) profileResponse.getBody().get("product");
+                        isPremium = "premium".equalsIgnoreCase(product);
+                        logger.info("Spotify product for user {}: {}", state, product);
+                    } else {
+                        logger.error("Failed to fetch Spotify profile. Status={}, Body={}",
+                                profileResponse.getStatusCode(),
+                                profileResponse.getBody());
+
+                        return ResponseEntity
+                                .status(profileResponse.getStatusCode())
+                                .body(Map.of(
+                                        "error", "Failed to fetch Spotify profile",
+                                        "status", profileResponse.getStatusCode().toString(),
+                                        "details", profileResponse.getBody()
+                                ));
+                    }
+                } catch (Exception ex) {
+                    logger.error("Exception while fetching Spotify profile", ex);
+                    return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                            .body(Map.of(
+                                    "error", "Exception while fetching Spotify profile",
+                                    "details", ex.getMessage()
+                            ));
                 }
             }
 
-            // Save access, refresh tokens, and premium flag to user's AppUser
+            // Save access, refresh tokens, and premium flag
             if (state != null && !state.isEmpty()) {
                 userService.updateSpotifyConnection(state, true, accessToken, refreshToken, isPremium);
                 logger.info("Spotify connection updated for user: {} (premium: {})", state, isPremium);
@@ -161,7 +169,7 @@ public class SpotifyAuthController {
                 logger.warn("No username (state) provided, skipping Spotify connection update.");
             }
 
-            // Set cookie for frontend session (access token only)
+            // Set cookie for frontend session
             ResponseCookie cookie = ResponseCookie.from("spotify_token", accessToken)
                     .httpOnly(true)
                     .secure(true)
@@ -171,7 +179,7 @@ public class SpotifyAuthController {
                     .build();
 
             String username = (state != null && !state.isEmpty()) ? state : "defaultUser";
-            String frontendBaseUrl = "https://trasora-frontend-web.vercel.app"; // make configurable if needed
+            String frontendBaseUrl = "https://trasora-frontend-web.vercel.app";
             String redirectUrl = frontendBaseUrl + "/profile/" + username;
 
             HttpHeaders redirectHeaders = new HttpHeaders();
@@ -187,11 +195,6 @@ public class SpotifyAuthController {
         }
     }
 
-
-
-    /**
-     * Optional test endpoint to verify callback handling.
-     */
     @GetMapping("/test-callback")
     public ResponseEntity<String> testCallback(
             @RequestParam(required = false) String code,
@@ -199,5 +202,4 @@ public class SpotifyAuthController {
         logger.info("Test callback hit with code={}, state={}", code, state);
         return ResponseEntity.ok("Test callback received");
     }
-
 }
