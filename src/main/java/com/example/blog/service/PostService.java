@@ -133,6 +133,13 @@ public class PostService {
                 .trackVolume(postDto.getTrackVolume())
                 .artistName(postDto.getArtistName())
                 .albumArtUrl(postDto.getAlbumArtUrl())
+
+                .deezerTrackId(postDto.getDeezerTrackId())
+                .deezerTrackName(postDto.getDeezerTrackName())
+                .deezerArtistName(postDto.getDeezerArtistName())
+                .deezerAlbumArtUrl(postDto.getDeezerAlbumArtUrl())
+                .deezerPreviewUrl(postDto.getDeezerPreviewUrl())
+
                 .customImageUrl(customImageUrl)
                 .customVideoUrl(customVideoUrl)
                 .s3Key(s3Key)

@@ -33,18 +33,27 @@ public class Post {
     private String title;
     private String text;
 
-    private String trackId;         // Spotify track ID (required)
+    // Spotify fields
+    private String trackId;         // Spotify track ID (required for Spotify posts)
     private String trackName;
     private String artistName;
     private String albumArtUrl;
-    private String customVideoUrl; // S3 video if uploaded
+
+    // ✅ New Deezer fields
+    private String deezerTrackId;
+    private String deezerTrackName;
+    private String deezerArtistName;
+    private String deezerAlbumArtUrl;
+    private String deezerPreviewUrl;
+
+    private String customVideoUrl;
     private Float trackVolume;
 
-    private String customImageUrl;  // S3 image if uploaded
-    private String s3Key;           // S3 key (for deletion)
+    private String customImageUrl;
+    private String s3Key;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;       // Unix timestamp or use @CreationTimestamp with ZonedDateTime
+    private LocalDateTime createdAt;
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
@@ -60,12 +69,11 @@ public class Post {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     @JsonIgnore
-    private Set<AppUser> likedBy = new HashSet<>(); // <-- This is the only change you need
+    private Set<AppUser> likedBy = new HashSet<>();
 
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Notification> notifications = new ArrayList<>();
-
 
     public boolean isLikedByUser(AppUser user) {
         return likedBy.contains(user);

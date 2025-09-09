@@ -29,6 +29,13 @@ public class PostMapper {
         dto.setS3Key(post.getS3Key());
         dto.setCreatedAt(post.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME));
 
+        dto.setDeezerTrackId(post.getDeezerTrackId());
+        dto.setDeezerTrackName(post.getDeezerTrackName());
+        dto.setDeezerArtistName(post.getDeezerArtistName());
+        dto.setDeezerAlbumArtUrl(post.getDeezerAlbumArtUrl());
+        dto.setDeezerPreviewUrl(post.getDeezerPreviewUrl());
+
+
         dto.setLikesCount(post.getLikedBy() != null ? post.getLikedBy().size() : 0);
         dto.setLikedByCurrentUser(currentUser != null && post.isLikedByUser(currentUser));
         dto.setBranchCount(post.getBranchCount());
