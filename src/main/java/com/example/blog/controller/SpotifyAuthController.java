@@ -46,6 +46,7 @@ public class SpotifyAuthController {
         String scopes = "user-read-email user-read-private streaming playlist-modify-public playlist-modify-private "
                 + "user-read-playback-state user-modify-playback-state user-read-currently-playing";
 
+        System.out.println(scopes);
         String authUrl = "https://accounts.spotify.com/authorize"
                 + "?client_id=" + clientId
                 + "&response_type=code"
