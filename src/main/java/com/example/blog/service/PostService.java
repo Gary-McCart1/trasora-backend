@@ -134,11 +134,12 @@ public class PostService {
                 .artistName(postDto.getArtistName())
                 .albumArtUrl(postDto.getAlbumArtUrl())
 
-                .deezerTrackId(postDto.getDeezerTrackId())
-                .deezerTrackName(postDto.getDeezerTrackName())
-                .deezerArtistName(postDto.getDeezerArtistName())
-                .deezerAlbumArtUrl(postDto.getDeezerAlbumArtUrl())
-                .deezerPreviewUrl(postDto.getDeezerPreviewUrl())
+                .soundcloudTrackId(postDto.getSoundcloudTrackId())
+                .soundcloudTrackName(postDto.getSoundcloudTrackName())
+                .soundcloudArtistName(postDto.getSoundcloudArtistName())
+                .soundcloudAlbumArtUrl(postDto.getSoundcloudAlbumArtUrl())
+                .soundcloudStreamUrl(postDto.getSoundcloudStreamUrl())
+
 
                 .customImageUrl(customImageUrl)
                 .customVideoUrl(customVideoUrl)

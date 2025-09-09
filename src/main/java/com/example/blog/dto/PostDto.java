@@ -20,12 +20,12 @@ public class PostDto {
     private String artistName;
     private String albumArtUrl;
 
-    // ✅ New Deezer fields
-    private String deezerTrackId;
-    private String deezerTrackName;
-    private String deezerArtistName;
-    private String deezerAlbumArtUrl;
-    private String deezerPreviewUrl;
+    // ✅ SoundCloud fields
+    private String soundcloudTrackId;
+    private String soundcloudTrackName;
+    private String soundcloudArtistName;
+    private String soundcloudAlbumArtUrl;
+    private String soundcloudStreamUrl;
 
     private String customImageUrl;
     private String customVideoUrl;
@@ -39,4 +39,5 @@ public class PostDto {
     private int branchCount;
     private boolean isPublic;
 }
+
 

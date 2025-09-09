@@ -29,26 +29,26 @@ public class PostMapper {
         dto.setS3Key(post.getS3Key());
         dto.setCreatedAt(post.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME));
 
-        dto.setDeezerTrackId(post.getDeezerTrackId());
-        dto.setDeezerTrackName(post.getDeezerTrackName());
-        dto.setDeezerArtistName(post.getDeezerArtistName());
-        dto.setDeezerAlbumArtUrl(post.getDeezerAlbumArtUrl());
-        dto.setDeezerPreviewUrl(post.getDeezerPreviewUrl());
-
+        // ✅ Map SoundCloud fields
+        dto.setSoundcloudTrackId(post.getSoundcloudTrackId());
+        dto.setSoundcloudTrackName(post.getSoundcloudTrackName());
+        dto.setSoundcloudArtistName(post.getSoundcloudArtistName());
+        dto.setSoundcloudAlbumArtUrl(post.getSoundcloudAlbumArtUrl());
+        dto.setSoundcloudStreamUrl(post.getSoundcloudStreamUrl());
 
         dto.setLikesCount(post.getLikedBy() != null ? post.getLikedBy().size() : 0);
         dto.setLikedByCurrentUser(currentUser != null && post.isLikedByUser(currentUser));
         dto.setBranchCount(post.getBranchCount());
+
         List<CommentDto> commentDtos = post.getComments().stream()
                 .map(CommentMapper::toDto)
                 .collect(Collectors.toList());
         dto.setComments(commentDtos);
 
-        // Add public/visibility info
         if (post.getAuthor() != null) {
             boolean canView = post.getAuthor().isProfilePublic() ||
                     (currentUser != null && currentUser.getId().equals(post.getAuthor().getId()));
-            dto.setPublic(canView); // true if the post is visible to currentUser
+            dto.setPublic(canView);
         } else {
             dto.setPublic(false);
         }
@@ -56,3 +56,4 @@ public class PostMapper {
         return dto;
     }
 }
+

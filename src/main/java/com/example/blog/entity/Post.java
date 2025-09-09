@@ -34,17 +34,17 @@ public class Post {
     private String text;
 
     // Spotify fields
-    private String trackId;         // Spotify track ID (required for Spotify posts)
+    private String trackId;
     private String trackName;
     private String artistName;
     private String albumArtUrl;
 
-    // ✅ New Deezer fields
-    private String deezerTrackId;
-    private String deezerTrackName;
-    private String deezerArtistName;
-    private String deezerAlbumArtUrl;
-    private String deezerPreviewUrl;
+    // ✅ SoundCloud fields (replacing Deezer)
+    private String soundcloudTrackId;
+    private String soundcloudTrackName;
+    private String soundcloudArtistName;
+    private String soundcloudAlbumArtUrl;
+    private String soundcloudStreamUrl;  // for playback
 
     private String customVideoUrl;
     private Float trackVolume;
@@ -79,3 +79,4 @@ public class Post {
         return likedBy.contains(user);
     }
 }
+
