@@ -30,11 +30,11 @@ public class PostMapper {
         dto.setCreatedAt(post.getCreatedAt().format(DateTimeFormatter.ISO_DATE_TIME));
 
         // ✅ Map SoundCloud fields
-        dto.setSoundcloudTrackId(post.getSoundcloudTrackId());
-        dto.setSoundcloudTrackName(post.getSoundcloudTrackName());
-        dto.setSoundcloudArtistName(post.getSoundcloudArtistName());
-        dto.setSoundcloudAlbumArtUrl(post.getSoundcloudAlbumArtUrl());
-        dto.setSoundcloudStreamUrl(post.getSoundcloudStreamUrl());
+        dto.setAppleTrackId(post.getAppleTrackId());
+        dto.setAppleTrackName(post.getAppleTrackName());
+        dto.setAppleArtistName(post.getAppleArtistName());
+        dto.setAppleAlbumArtUrl(post.getAppleAlbumArtUrl());
+        dto.setApplePreviewUrl(post.getApplePreviewUrl());
 
         dto.setLikesCount(post.getLikedBy() != null ? post.getLikedBy().size() : 0);
         dto.setLikedByCurrentUser(currentUser != null && post.isLikedByUser(currentUser));

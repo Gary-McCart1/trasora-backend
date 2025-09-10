@@ -39,12 +39,13 @@ public class Post {
     private String artistName;
     private String albumArtUrl;
 
-    // ✅ SoundCloud fields (replacing Deezer)
-    private String soundcloudTrackId;
-    private String soundcloudTrackName;
-    private String soundcloudArtistName;
-    private String soundcloudAlbumArtUrl;
-    private String soundcloudStreamUrl;  // for playback
+    // Apple Music fields
+    private String appleTrackId;
+    private String appleTrackName;
+    private String appleArtistName;
+    private String appleAlbumArtUrl;
+    private String applePreviewUrl; // 30-second preview
+
 
     private String customVideoUrl;
     private Float trackVolume;

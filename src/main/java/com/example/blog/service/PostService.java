@@ -134,11 +134,11 @@ public class PostService {
                 .artistName(postDto.getArtistName())
                 .albumArtUrl(postDto.getAlbumArtUrl())
 
-                .soundcloudTrackId(postDto.getSoundcloudTrackId())
-                .soundcloudTrackName(postDto.getSoundcloudTrackName())
-                .soundcloudArtistName(postDto.getSoundcloudArtistName())
-                .soundcloudAlbumArtUrl(postDto.getSoundcloudAlbumArtUrl())
-                .soundcloudStreamUrl(postDto.getSoundcloudStreamUrl())
+                .appleTrackId(postDto.getAppleTrackId())
+                .appleTrackName(postDto.getAppleTrackName())
+                .appleArtistName(postDto.getAppleArtistName())
+                .appleAlbumArtUrl(postDto.getAppleAlbumArtUrl())
+                .applePreviewUrl(postDto.getApplePreviewUrl())
 
 
                 .customImageUrl(customImageUrl)
