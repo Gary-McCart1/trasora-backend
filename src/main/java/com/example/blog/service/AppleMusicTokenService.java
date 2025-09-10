@@ -8,8 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.KeyFactory;
 import java.security.interfaces.ECPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -22,16 +20,16 @@ public class AppleMusicTokenService {
 
     private static final Logger logger = LoggerFactory.getLogger(AppleMusicTokenService.class);
 
-    @Value("${apple.music.key-path}")
-    private String privateKeyPath;
+    @Value("${APPLE_MUSIC_KEY}")
+    private String privateKeyContent;
 
-    @Value("${apple.music.key-id}")
+    @Value("${APPLE_MUSIC_KEY_ID}")
     private String keyId;
 
-    @Value("${apple.music.team-id}")
+    @Value("${APPLE_MUSIC_TEAM_ID}")
     private String teamId;
 
-    @Value("${apple.music.token-expiration:15777000}")
+    @Value("${apple.music.token-expiration:15777000}") // default 6 months
     private long tokenExpirationSeconds;
 
     private ECPrivateKey ecPrivateKey;
@@ -39,38 +37,41 @@ public class AppleMusicTokenService {
     @PostConstruct
     private void init() {
         try {
-            logger.info("Loading Apple Music private key...");
-            String privateKeyContent = new String(Files.readAllBytes(Paths.get(privateKeyPath)))
+            logger.info("Initializing Apple Music key from environment variable...");
+            String cleanedKey = privateKeyContent
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
                     .replaceAll("\\s+", "");
 
-            byte[] keyBytes = Base64.getDecoder().decode(privateKeyContent);
+            byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
             ecPrivateKey = (ECPrivateKey) keyFactory.generatePrivate(keySpec);
-            logger.info("ECPrivateKey loaded successfully");
-
+            logger.info("ECPrivateKey loaded successfully from env variable");
         } catch (Exception e) {
             logger.error("Failed to load Apple Music private key", e);
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to load Apple Music private key", e);
         }
     }
 
     public String generateDeveloperToken() {
         try {
+            logger.info("Generating Apple Music developer token...");
             Algorithm algorithm = Algorithm.ECDSA256(null, ecPrivateKey);
             Instant now = Instant.now();
-            return JWT.create()
+            String token = JWT.create()
                     .withIssuer(teamId)
                     .withIssuedAt(Date.from(now))
                     .withExpiresAt(Date.from(now.plusSeconds(tokenExpirationSeconds)))
                     .withKeyId(keyId)
                     .sign(algorithm);
 
+            logger.info("Developer token generated successfully (length: {})", token.length());
+            return token;
+
         } catch (Exception e) {
             logger.error("Failed to generate Apple Music developer token", e);
-            throw new RuntimeException(e);
+            throw new RuntimeException("Failed to generate Apple Music developer token", e);
         }
     }
 }
