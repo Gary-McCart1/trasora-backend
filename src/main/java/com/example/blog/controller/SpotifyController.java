@@ -6,13 +6,12 @@ import com.example.blog.entity.AppUser;
 import com.example.blog.repository.UserRepository;
 import com.example.blog.service.PostService;
 import com.example.blog.service.TrunkService;
+import com.example.blog.service.SpotifyAuthService;
 import com.example.blog.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -30,28 +29,29 @@ public class SpotifyController {
     private static final Logger logger = LoggerFactory.getLogger(SpotifyController.class);
 
     private final RestTemplate restTemplate = new RestTemplate();
-    private final UserService userService;
     private final PostService postService;
     private final UserRepository userRepository;
     private final TrunkService trunkService;
+    private final SpotifyAuthService spotifyAuthService;
+    private final UserService userService;
 
+    // --- Explore ---
     @GetMapping("/explore")
-    public ResponseEntity<?> getExploreContent(@RequestHeader("Username") String username) {
+    public ResponseEntity<?> getExploreContent() {
         Map<String, Object> exploreData = new HashMap<>();
         try {
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
+            Map<String, Object> rawData = fetchExploreData(accessToken);
 
-            Map<String, Object> rawData = fetchExploreDataWithRetry(accessToken, username);
-
-            // Shuffle featured tracks
-            List<Map<String, Object>> featuredTracks = (List<Map<String, Object>>) rawData.getOrDefault("featuredTracks", Collections.emptyList());
+            List<Map<String, Object>> featuredTracks =
+                    (List<Map<String, Object>>) rawData.getOrDefault("featuredTracks", Collections.emptyList());
             Collections.shuffle(featuredTracks);
-            exploreData.put("featuredTracks", featuredTracks.subList(0, Math.min(20, featuredTracks.size()))); // pick 20 random tracks
+            exploreData.put("featuredTracks", featuredTracks.subList(0, Math.min(20, featuredTracks.size())));
 
-            // Shuffle new releases
-            List<Map<String, Object>> newReleases = (List<Map<String, Object>>) rawData.getOrDefault("newReleases", Collections.emptyList());
+            List<Map<String, Object>> newReleases =
+                    (List<Map<String, Object>>) rawData.getOrDefault("newReleases", Collections.emptyList());
             Collections.shuffle(newReleases);
-            exploreData.put("newReleases", newReleases.subList(0, Math.min(20, newReleases.size()))); // pick 20 random albums
+            exploreData.put("newReleases", newReleases.subList(0, Math.min(20, newReleases.size())));
 
             return ResponseEntity.ok(exploreData);
         } catch (Exception e) {
@@ -62,20 +62,6 @@ public class SpotifyController {
         }
     }
 
-    private Map<String, Object> fetchExploreDataWithRetry(String accessToken, String username) {
-        int attempts = 0;
-        while (attempts < 2) {
-            try {
-                return fetchExploreData(accessToken);
-            } catch (HttpClientErrorException.Unauthorized e) {
-                attempts++;
-                logger.warn("Access token expired, refreshing token for username: {}", username);
-                accessToken = userService.refreshSpotifyToken(username);
-            }
-        }
-        throw new RuntimeException("Failed to fetch Spotify data after token refresh");
-    }
-
     private Map<String, Object> fetchExploreData(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -84,43 +70,35 @@ public class SpotifyController {
         Map<String, Object> exploreData = new HashMap<>();
         Random rand = new Random();
 
-        // Fetch Top Tracks (all of 2025, sorted newest first)
+        // Featured tracks
         try {
-            int offset = rand.nextInt(50); // random offset for search results
+            int offset = rand.nextInt(50);
             String searchUrl = "https://api.spotify.com/v1/search?q=year:2025&type=track&limit=50&offset=" + offset;
-            ResponseEntity<Map> searchResponse = restTemplate.exchange(searchUrl, HttpMethod.GET, entity, Map.class);
+            ResponseEntity<Map> searchResponse =
+                    restTemplate.exchange(searchUrl, HttpMethod.GET, entity, Map.class);
 
-            List<Map<String, Object>> tracks = (List<Map<String, Object>>)
-                    ((Map<String, Object>) searchResponse.getBody().get("tracks")).get("items");
+            List<Map<String, Object>> tracks =
+                    (List<Map<String, Object>>) ((Map<String, Object>) searchResponse.getBody().get("tracks")).get("items");
 
-            List<Map<String, Object>> sortedTracks = tracks.stream()
-                    .filter(t -> ((Map<String, Object>) t.get("album")).get("release_date") != null)
-                    .sorted((a, b) -> {
-                        String dateA = (String) ((Map<String, Object>) a.get("album")).get("release_date");
-                        String dateB = (String) ((Map<String, Object>) b.get("album")).get("release_date");
-                        return dateB.compareTo(dateA);
-                    })
-                    .collect(Collectors.toList());
-
-            Collections.shuffle(sortedTracks); // shuffle for extra randomness
-            exploreData.put("featuredTracks", sortedTracks.subList(0, Math.min(20, sortedTracks.size())));
-        } catch (HttpClientErrorException e) {
+            Collections.shuffle(tracks);
+            exploreData.put("featuredTracks", tracks.subList(0, Math.min(20, tracks.size())));
+        } catch (Exception e) {
             logger.warn("Failed to fetch top tracks: {}", e.getMessage());
             exploreData.put("featuredTracks", Collections.emptyList());
         }
 
-        // Fetch new releases
+        // New releases
         try {
-            int offset = rand.nextInt(50); // random offset for new releases
-            String newReleasesUrl = "https://api.spotify.com/v1/browse/new-releases?country=US&limit=20&offset=" + offset;
-            ResponseEntity<Map> newReleasesResponse = restTemplate.exchange(newReleasesUrl, HttpMethod.GET, entity, Map.class);
+            int offset = rand.nextInt(50);
+            String url = "https://api.spotify.com/v1/browse/new-releases?country=US&limit=20&offset=" + offset;
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
 
-            Map<String, Object> albumsObj = (Map<String, Object>) newReleasesResponse.getBody().get("albums");
+            Map<String, Object> albumsObj = (Map<String, Object>) response.getBody().get("albums");
             List<Map<String, Object>> albums = (List<Map<String, Object>>) albumsObj.get("items");
 
-            Collections.shuffle(albums); // shuffle for extra randomness
+            Collections.shuffle(albums);
             exploreData.put("newReleases", albums.subList(0, Math.min(20, albums.size())));
-        } catch (HttpClientErrorException e) {
+        } catch (Exception e) {
             logger.warn("Failed to fetch new releases: {}", e.getMessage());
             exploreData.put("newReleases", Collections.emptyList());
         }
@@ -128,13 +106,11 @@ public class SpotifyController {
         return exploreData;
     }
 
-
+    // --- Albums ---
     @GetMapping("/albums/{albumId}/tracks")
-    public ResponseEntity<?> getAlbumTracks(
-            @RequestHeader("Username") String username,
-            @PathVariable String albumId) {
+    public ResponseEntity<?> getAlbumTracks(@PathVariable String albumId) {
         try {
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -146,69 +122,69 @@ public class SpotifyController {
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             logger.error("Failed to fetch album tracks", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to fetch album tracks");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch album tracks");
         }
     }
 
-    @GetMapping("/test")
-    public ResponseEntity<String> testEndpoint() {
-        return ResponseEntity.ok("Test endpoint is working!");
-    }
-
+    // --- Recommendations from Posts ---
     @GetMapping("/recommendations/from-posts")
-    public ResponseEntity<?> getRecommendationsFromPosts(@AuthenticationPrincipal UserDetails principal) {
-        AppUser currentUser = userRepository.findByUsername(principal.getUsername())
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public ResponseEntity<?> getRecommendationsFromPosts() {
+        try {
+            String accessToken = spotifyAuthService.getAccessToken();
 
-        String accessToken = userService.refreshSpotifyToken(currentUser.getUsername());
+            // ✅ Get current user
+            AppUser currentUser = userService.getCurrentUser();
 
-        List<PostDto> posts = postService.getPosts(currentUser);
+            // ✅ Fetch posts by this user (adjust service method accordingly)
+            List<PostDto> posts = postService.getPosts(currentUser);
 
-        Set<String> artistNames = posts.stream()
-                .map(PostDto::getArtistName)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
+            Set<String> artistNames = posts.stream()
+                    .map(PostDto::getArtistName)
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toSet());
 
-        if (artistNames.isEmpty()) {
-            return ResponseEntity.ok(Collections.emptyList());
-        }
-
-        List<Map<String, Object>> recommendations = new ArrayList<>();
-        HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
-        HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-        for (String artist : artistNames) {
-            try {
-                String query = URLEncoder.encode("artist:" + artist, StandardCharsets.UTF_8);
-                String url = "https://api.spotify.com/v1/search?q=" + query + "&type=track&limit=5";
-
-                ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
-                Map<String, Object> body = response.getBody();
-
-                if (body != null && body.containsKey("tracks")) {
-                    recommendations.addAll((List<Map<String, Object>>)
-                            ((Map<String, Object>) body.get("tracks")).get("items"));
-                }
-            } catch (Exception e) {
-                logger.warn("Failed to fetch tracks for artist {}: {}", artist, e.getMessage());
+            if (artistNames.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
             }
+
+            List<Map<String, Object>> recommendations = new ArrayList<>();
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(accessToken);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            for (String artist : artistNames) {
+                try {
+                    String query = URLEncoder.encode("artist:" + artist, StandardCharsets.UTF_8);
+                    String url = "https://api.spotify.com/v1/search?q=" + query + "&type=track&limit=5";
+
+                    ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+                    Map<String, Object> body = response.getBody();
+
+                    if (body != null && body.containsKey("tracks")) {
+                        recommendations.addAll((List<Map<String, Object>>)
+                                ((Map<String, Object>) body.get("tracks")).get("items"));
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to fetch tracks for artist {}: {}", artist, e.getMessage());
+                }
+            }
+
+            Collections.shuffle(recommendations);
+            List<Map<String, Object>> limited = recommendations.subList(0, Math.min(20, recommendations.size()));
+
+            return ResponseEntity.ok(limited);
+        } catch (Exception e) {
+            logger.error("Failed to fetch recommendations", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch recommendations");
         }
-
-        // Shuffle recommendations and limit to 20
-        Collections.shuffle(recommendations);
-        List<Map<String, Object>> limitedRecs = recommendations.subList(0, Math.min(20, recommendations.size()));
-
-        return ResponseEntity.ok(limitedRecs);
     }
 
+
+    // --- Track by ID ---
     @GetMapping("/tracks/{trackId}")
-    public ResponseEntity<?> getTrackById(
-            @RequestHeader("Username") String username,
-            @PathVariable String trackId) {
+    public ResponseEntity<?> getTrackById(@PathVariable String trackId) {
         try {
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -220,16 +196,15 @@ public class SpotifyController {
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
             logger.error("Failed to fetch track", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to fetch track");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch track");
         }
     }
+
+    // --- Search ---
     @GetMapping("/search")
-    public ResponseEntity<?> searchSpotify(
-            @RequestHeader("Username") String username,
-            @RequestParam String q) {
+    public ResponseEntity<?> searchSpotify(@RequestParam String q) {
         try {
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
@@ -246,28 +221,21 @@ public class SpotifyController {
         }
     }
 
+    // --- Trunk to Playlist (server account only!) ---
     @PostMapping("/trunk-playlist/{trunkId}")
-    public ResponseEntity<?> createPlaylistFromTrunk(
-            @PathVariable Long trunkId,
-            @AuthenticationPrincipal UserDetails principal) {
-
+    public ResponseEntity<?> createPlaylistFromTrunk(@PathVariable Long trunkId) {
         try {
-            AppUser currentUser = userService.getCurrentUser();
-            String accessToken = userService.refreshSpotifyToken(currentUser.getUsername());
+            String accessToken = spotifyAuthService.getAccessToken();
 
-            // Fetch trunk with branches
-            TrunkDto trunk = trunkService.getTrunk(trunkId); // make sure this includes branches
-
+            TrunkDto trunk = trunkService.getTrunk(trunkId);
             if (trunk.getBranches().isEmpty()) {
-                return ResponseEntity.badRequest().body("Trunk has no branches to add to playlist.");
+                return ResponseEntity.badRequest().body("Trunk has no branches to add.");
             }
 
-            // Map branches to Spotify track URIs
             List<String> uris = trunk.getBranches().stream()
                     .map(b -> "spotify:track:" + b.getTrackId())
                     .toList();
 
-            // Create playlist body
             Map<String, Object> playlistBody = new HashMap<>();
             playlistBody.put("name", trunk.getName());
             playlistBody.put("description", trunk.getDescription() != null ? trunk.getDescription() : "");
@@ -278,100 +246,77 @@ public class SpotifyController {
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             HttpEntity<Map<String, Object>> createEntity = new HttpEntity<>(playlistBody, headers);
-
-            // 1️⃣ Create the playlist
             String createPlaylistUrl = "https://api.spotify.com/v1/me/playlists";
             ResponseEntity<Map> playlistResponse = restTemplate.postForEntity(createPlaylistUrl, createEntity, Map.class);
 
             if (!playlistResponse.getStatusCode().is2xxSuccessful() || playlistResponse.getBody() == null) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create Spotify playlist.");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create playlist.");
             }
 
             String playlistId = (String) playlistResponse.getBody().get("id");
 
-            // 2️⃣ Add tracks to the playlist
             Map<String, Object> addTracksBody = Map.of("uris", uris);
             HttpEntity<Map<String, Object>> addTracksEntity = new HttpEntity<>(addTracksBody, headers);
 
             String addTracksUrl = "https://api.spotify.com/v1/playlists/" + playlistId + "/tracks";
-            ResponseEntity<Map> addTracksResponse = restTemplate.postForEntity(addTracksUrl, addTracksEntity, Map.class);
-
-            if (!addTracksResponse.getStatusCode().is2xxSuccessful()) {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add tracks to playlist.");
-            }
+            restTemplate.postForEntity(addTracksUrl, addTracksEntity, Map.class);
 
             return ResponseEntity.ok(Map.of(
                     "playlistId", playlistId,
                     "playlistUrl", "https://open.spotify.com/playlist/" + playlistId
             ));
-
         } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("An error occurred while creating the playlist.");
+            logger.error("Failed to create playlist", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error creating playlist.");
         }
     }
 
-    @GetMapping("/token")
-    public ResponseEntity<?> getSpotifyToken(@AuthenticationPrincipal UserDetails principal) {
-        try {
-            String username = principal.getUsername();
-            String accessToken = userService.refreshSpotifyToken(username); // force refresh if expired
-
-            return ResponseEntity.ok(Map.of("accessToken", accessToken));
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to get Spotify token", "details", e.getMessage()));
-        }
-    }
-
+    // --- Play & Pause ---
     @PostMapping("/play-track")
-    public ResponseEntity<?> playTrack(@RequestHeader("Username") String username, @RequestBody Map<String, String> body) {
+    public ResponseEntity<?> playTrack(@RequestBody Map<String, String> body) {
         try {
             String trackId = body.get("trackId");
-            if (trackId == null) return ResponseEntity.badRequest().body("trackId is required");
+            if (trackId == null) return ResponseEntity.badRequest().body("trackId required");
 
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
             String deviceId = getActiveDeviceId(accessToken);
 
-            Map<String, Object> playBody = Map.of("uris", List.of("spotify:track:" + trackId), "device_id", deviceId);
+            Map<String, Object> playBody = Map.of("uris", List.of("spotify:track:" + trackId));
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, Object>> playEntity = new HttpEntity<>(playBody, headers);
 
-            restTemplate.exchange("https://api.spotify.com/v1/me/player/play", HttpMethod.PUT, playEntity, Void.class);
+            HttpEntity<Map<String, Object>> playEntity = new HttpEntity<>(playBody, headers);
+            restTemplate.exchange("https://api.spotify.com/v1/me/player/play?device_id=" + deviceId,
+                    HttpMethod.PUT, playEntity, Void.class);
 
             return ResponseEntity.ok(Map.of("message", "Playback started on device " + deviceId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
             logger.error("Failed to play track", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to play track: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to play track");
         }
     }
 
     @PostMapping("/pause-track")
-    public ResponseEntity<?> pauseTrack(@RequestHeader("Username") String username) {
+    public ResponseEntity<?> pauseTrack() {
         try {
-            String accessToken = userService.refreshSpotifyToken(username);
+            String accessToken = spotifyAuthService.getAccessToken();
             String deviceId = getActiveDeviceId(accessToken);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setBearerAuth(accessToken);
-            HttpEntity<Void> pauseEntity = new HttpEntity<>(headers);
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
 
-            restTemplate.exchange("https://api.spotify.com/v1/me/player/pause?device_id=" + deviceId, HttpMethod.PUT, pauseEntity, Void.class);
+            restTemplate.exchange("https://api.spotify.com/v1/me/player/pause?device_id=" + deviceId,
+                    HttpMethod.PUT, entity, Void.class);
 
             return ResponseEntity.ok(Map.of("message", "Playback paused on device " + deviceId));
-        } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         } catch (Exception e) {
             logger.error("Failed to pause track", e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause track: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to pause track");
         }
     }
 
-    // --- Helper method to get active device ---
     private String getActiveDeviceId(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
@@ -382,7 +327,7 @@ public class SpotifyController {
         List<Map<String, Object>> devices = (List<Map<String, Object>>) devicesResponse.get("devices");
 
         if (devices == null || devices.isEmpty()) {
-            throw new RuntimeException("No active Spotify device found. Make sure a device is ready.");
+            throw new RuntimeException("No active Spotify device found. Open Spotify on a device first.");
         }
 
         return devices.stream()
@@ -391,5 +336,4 @@ public class SpotifyController {
                 .findFirst()
                 .orElse((String) devices.get(0).get("id"));
     }
-
 }
