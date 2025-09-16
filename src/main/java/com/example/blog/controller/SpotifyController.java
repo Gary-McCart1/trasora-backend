@@ -36,12 +36,14 @@ public class SpotifyController {
     private final UserService userService;
 
     // --- Explore ---
+    // --- Explore ---
     @GetMapping("/explore")
     public ResponseEntity<?> getExploreContent() {
         Map<String, Object> exploreData = new HashMap<>();
         try {
-            String accessToken = spotifyAuthService.getAccessToken();
-            Map<String, Object> rawData = fetchExploreData(accessToken);
+            // Use global Spotify account for explore page
+            String globalAccessToken = spotifyAuthService.getAccessToken(); // NEW METHOD
+            Map<String, Object> rawData = fetchExploreData(globalAccessToken);
 
             List<Map<String, Object>> featuredTracks =
                     (List<Map<String, Object>>) rawData.getOrDefault("featuredTracks", Collections.emptyList());
@@ -61,6 +63,7 @@ public class SpotifyController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exploreData);
         }
     }
+
 
     private Map<String, Object> fetchExploreData(String accessToken) {
         HttpHeaders headers = new HttpHeaders();
