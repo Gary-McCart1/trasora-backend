@@ -39,11 +39,11 @@ public class AppleMusicTokenService {
         try {
             logger.info("Initializing Apple Music key from environment variable...");
 
-            // Remove BEGIN/END lines if present (optional for single-line key)
+            // Remove BEGIN/END lines
             String cleanedKey = privateKeyContent
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
-                    .trim();
+                    .replaceAll("\\s+", ""); // remove all spaces and line breaks
 
             byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
@@ -56,6 +56,7 @@ public class AppleMusicTokenService {
             throw new RuntimeException("Failed to load Apple Music private key", e);
         }
     }
+
 
     public String generateDeveloperToken() {
         try {
