@@ -20,13 +20,13 @@ public class AppleMusicTokenService {
 
     private static final Logger logger = LoggerFactory.getLogger(AppleMusicTokenService.class);
 
-    @Value("${APPLE_MUSIC_KEY}")
+    @Value("${apple.music.key}")
     private String privateKeyContent;
 
-    @Value("${APPLE_MUSIC_KEY_ID}")
+    @Value("${apple.music.key-id}")
     private String keyId;
 
-    @Value("${APPLE_MUSIC_TEAM_ID}")
+    @Value("${apple.music.team-id}")
     private String teamId;
 
     @Value("${apple.music.token-expiration:15777000}") // default 6 months
@@ -38,15 +38,18 @@ public class AppleMusicTokenService {
     private void init() {
         try {
             logger.info("Initializing Apple Music key from environment variable...");
+
+            // Remove BEGIN/END lines if present (optional for single-line key)
             String cleanedKey = privateKeyContent
                     .replace("-----BEGIN PRIVATE KEY-----", "")
                     .replace("-----END PRIVATE KEY-----", "")
-                    .replaceAll("\\s+", "");
+                    .trim();
 
             byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
             KeyFactory keyFactory = KeyFactory.getInstance("EC");
             PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(keyBytes);
             ecPrivateKey = (ECPrivateKey) keyFactory.generatePrivate(keySpec);
+
             logger.info("ECPrivateKey loaded successfully from env variable");
         } catch (Exception e) {
             logger.error("Failed to load Apple Music private key", e);
