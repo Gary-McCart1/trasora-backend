@@ -99,4 +99,29 @@ public class AppleMusicController {
                     .body("Apple Music API error: " + e.getMessage());
         }
     }
+
+    @GetMapping("/search")
+    public ResponseEntity<?> searchTracks(@RequestParam String q) {
+        try {
+            String url = "https://api.music.apple.com/v1/catalog/us/search?term="
+                    + URLEncoder.encode(q, StandardCharsets.UTF_8)
+                    + "&types=songs&limit=25";
+            ResponseEntity<Map> response = appleMusicGet(url);
+            return ResponseEntity.ok(response.getBody()); }
+        catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Apple Music API error: " + e.getMessage());
+        }
+    } @GetMapping("/tracks/{trackId}")
+    public ResponseEntity<?> getTrackById(@PathVariable String trackId) {
+        try {
+            String url = "https://api.music.apple.com/v1/catalog/us/songs/" + trackId;
+            ResponseEntity<Map> response = appleMusicGet(url);
+            return ResponseEntity.ok(response.getBody());
+        }
+        catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Apple Music API error: " + e.getMessage());
+        }
+    }
 }
