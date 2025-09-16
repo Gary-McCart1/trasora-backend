@@ -36,7 +36,6 @@ public class SpotifyController {
     private final UserService userService;
 
     // --- Explore ---
-    // --- Explore ---
     @GetMapping("/explore")
     public ResponseEntity<?> getExploreContent() {
         Map<String, Object> exploreData = new HashMap<>();
@@ -133,26 +132,37 @@ public class SpotifyController {
     @GetMapping("/recommendations/from-posts")
     public ResponseEntity<?> getRecommendationsFromPosts() {
         try {
-            String accessToken = spotifyAuthService.getAccessToken();
+            // Use global Spotify account token
+            String globalAccessToken = spotifyAuthService.getAccessToken();
 
-            // ✅ Get current user
+            // Get current user
             AppUser currentUser = userService.getCurrentUser();
+            if (currentUser == null) {
+                logger.warn("No current user found.");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("User not logged in");
+            }
 
-            // ✅ Fetch posts by this user (adjust service method accordingly)
+            // Fetch posts by this user
             List<PostDto> posts = postService.getPosts(currentUser);
+            if (posts == null || posts.isEmpty()) {
+                logger.info("No posts found for user {}", currentUser.getUsername());
+                return ResponseEntity.ok(Collections.emptyList());
+            }
 
+            // Collect unique artist names
             Set<String> artistNames = posts.stream()
                     .map(PostDto::getArtistName)
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
 
             if (artistNames.isEmpty()) {
+                logger.info("No artist names found in user's posts");
                 return ResponseEntity.ok(Collections.emptyList());
             }
 
             List<Map<String, Object>> recommendations = new ArrayList<>();
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
+            headers.setBearerAuth(globalAccessToken);
             HttpEntity<Void> entity = new HttpEntity<>(headers);
 
             for (String artist : artistNames) {
@@ -164,23 +174,32 @@ public class SpotifyController {
                     Map<String, Object> body = response.getBody();
 
                     if (body != null && body.containsKey("tracks")) {
-                        recommendations.addAll((List<Map<String, Object>>)
-                                ((Map<String, Object>) body.get("tracks")).get("items"));
+                        Map<String, Object> tracksObj = (Map<String, Object>) body.get("tracks");
+                        List<Map<String, Object>> items = (List<Map<String, Object>>) tracksObj.get("items");
+                        if (items != null) {
+                            recommendations.addAll(items);
+                        }
                     }
                 } catch (Exception e) {
-                    logger.warn("Failed to fetch tracks for artist {}: {}", artist, e.getMessage());
+                    logger.warn("Failed to fetch tracks for artist '{}': {}", artist, e.getMessage());
                 }
+            }
+
+            if (recommendations.isEmpty()) {
+                return ResponseEntity.ok(Collections.emptyList());
             }
 
             Collections.shuffle(recommendations);
             List<Map<String, Object>> limited = recommendations.subList(0, Math.min(20, recommendations.size()));
 
             return ResponseEntity.ok(limited);
+
         } catch (Exception e) {
             logger.error("Failed to fetch recommendations", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to fetch recommendations");
         }
     }
+
 
 
     // --- Track by ID ---
