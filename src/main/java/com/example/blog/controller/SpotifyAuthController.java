@@ -119,6 +119,11 @@ public class SpotifyAuthController {
             String accessToken = (String) tokenResponse.get("access_token");
             String refreshToken = (String) tokenResponse.get("refresh_token");
 
+            // **LOG THE REFRESH TOKEN HERE**
+            logger.info("Spotify REFRESH TOKEN (copy this for Heroku config!): {}", refreshToken);
+
+
+
             boolean isPremium = false;
 
             // Fetch Spotify profile
