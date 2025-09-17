@@ -32,6 +32,8 @@ public class Story {
     private String artistName;
     private String albumArtUrl;
 
+    private String applePreviewUrl;
+
     // Either image/video URL or Spotify track ID
     private String contentUrl;    // S3 URL or track ID
     private String s3Key;         // S3 key for deletion (if media)

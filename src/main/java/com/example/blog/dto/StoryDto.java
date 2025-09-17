@@ -24,6 +24,8 @@ public class StoryDto {
     private String artistName;
     private String albumArtUrl;
 
+    private String applePreviewUrl;
+
     private String contentUrl;  // S3 URL or track ID
     private String caption;
 
