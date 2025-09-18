@@ -60,7 +60,7 @@ public class AuthController {
         }
 
         // Fallback to cookie
-        String token = jwtUtil.extractTokenFromCookie(request);
+        String token = jwtUtil.extractTokenFromHeader(request);
         if (token != null) {
             return token;
         }

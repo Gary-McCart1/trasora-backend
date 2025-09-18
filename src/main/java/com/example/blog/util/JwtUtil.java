@@ -45,14 +45,23 @@ public class JwtUtil {
         }
     }
 
-    public String extractTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) return null;
-        for (Cookie cookie : request.getCookies()) {
-            if ("jwt".equals(cookie.getName())) {
-                return cookie.getValue();
-            }
+    public String extractTokenFromHeader(HttpServletRequest request) {
+        String bearerToken = request.getHeader("Authorization");
+        if (bearerToken != null && bearerToken.startsWith("Bearer ")) {
+            return bearerToken.substring(7); // strip "Bearer "
         }
         return null;
     }
+
+
+//    public String extractTokenFromCookie(HttpServletRequest request) {
+//        if (request.getCookies() == null) return null;
+//        for (Cookie cookie : request.getCookies()) {
+//            if ("jwt".equals(cookie.getName())) {
+//                return cookie.getValue();
+//            }
+//        }
+//        return null;
+//    }
 
 }
