@@ -21,7 +21,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.time.Duration;
 import java.util.*;
 
 @RestController
@@ -51,21 +50,12 @@ public class AuthController {
         this.userRepository = userRepository;
     }
 
-    /** Utility: extract token from cookie or Authorization header */
+    /** Utility: extract token from header */
     private String extractToken(HttpServletRequest request) {
-        // Prioritize Authorization header first
         String authHeader = request.getHeader("Authorization");
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             return authHeader.substring(7);
         }
-
-        // Fallback to cookie
-        String token = jwtUtil.extractTokenFromHeader(request);
-        if (token != null) {
-            return token;
-        }
-
-        // If no token is found, throw an exception
         throw new RuntimeException("Unauthorized: Invalid or missing token");
     }
 
@@ -102,18 +92,17 @@ public class AuthController {
 
             AppUser user = userService.findByUsernameOrEmail(userDetails.getUsername());
             if (!user.isVerified()) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Please verify your email before logging in.");
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("Please verify your email before logging in.");
             }
 
-            String token = jwtUtil.generateToken(user.getUsername());
+            // Generate both tokens
+            String accessToken = jwtUtil.generateAccessToken(user.getUsername());
+            String refreshToken = jwtUtil.generateRefreshToken(user.getUsername());
 
-            // Remove cookie creation and setting
-            // ResponseCookie cookie = ResponseCookie.from("jwt", token) ...;
-            // response.setHeader("Set-Cookie", cookie.toString());
-
-            // Return the JWT token and user data in the response body
             Map<String, Object> responseData = new HashMap<>();
-            responseData.put("token", token);
+            responseData.put("accessToken", accessToken);
+            responseData.put("refreshToken", refreshToken);
             responseData.put("user", mapToUserDto(user));
 
             return ResponseEntity.ok(responseData);
@@ -122,6 +111,20 @@ public class AuthController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(Map.of("message", "Invalid username or password"));
         }
+    }
+
+    /** 🔄 Refresh endpoint */
+    @PostMapping("/refresh")
+    public ResponseEntity<?> refresh(@RequestBody Map<String, String> request) {
+        String refreshToken = request.get("refreshToken");
+        if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid or expired refresh token");
+        }
+
+        String username = jwtUtil.extractUsername(refreshToken);
+        String newAccessToken = jwtUtil.generateAccessToken(username);
+
+        return ResponseEntity.ok(Map.of("accessToken", newAccessToken));
     }
 
     @PostMapping("/signup")
