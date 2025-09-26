@@ -8,15 +8,18 @@ import nl.martijndwars.webpush.PushService;
 import nl.martijndwars.webpush.Utils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
-import java.security.GeneralSecurityException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
 public class PushNotificationService {
 
     private final UserRepository userRepository;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Value("${VAPID_PUBLIC_KEY}")
     private String publicKey;
@@ -24,7 +27,7 @@ public class PushNotificationService {
     @Value("${VAPID_PRIVATE_KEY}")
     private String privateKey;
 
-    public void sendPushNotification(AppUser user, String message) {
+    public void sendPushNotification(AppUser user, String title, String body, String imageUrl, String url) {
         if (user.getPushSubscriptionEndpoint() == null) return;
 
         try {
@@ -32,24 +35,36 @@ public class PushNotificationService {
                     .setPublicKey(Utils.loadPublicKey(publicKey))
                     .setPrivateKey(Utils.loadPrivateKey(privateKey));
 
+            // Build JSON payload
+            Map<String, String> payloadMap = new HashMap<>();
+            payloadMap.put("title", title != null ? title : "Trasora");
+            payloadMap.put("body", body != null ? body : "New activity!");
+            if (imageUrl != null) {
+                payloadMap.put("imageUrl", imageUrl);
+            }
+            if (url != null) {
+                payloadMap.put("url", url);
+            }
+
+            String payload = objectMapper.writeValueAsString(payloadMap);
+
             Notification notification = new Notification(
                     user.getPushSubscriptionEndpoint(),
                     user.getPushSubscriptionKeysP256dh(),
                     user.getPushSubscriptionKeysAuth(),
-                    message
+                    payload
             );
 
             pushService.send(notification);
         } catch (Exception e) {
             e.printStackTrace();
         }
-
     }
 
-    public void sendToAllUsers(String message) {
+    public void sendToAllUsers(String title, String body, String imageUrl, String url) {
         List<AppUser> users = userRepository.findAll();
         for (AppUser user : users) {
-            sendPushNotification(user, message);
+            sendPushNotification(user, title, body, imageUrl, url);
         }
     }
 }
