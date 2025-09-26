@@ -392,7 +392,10 @@ public class AuthController {
                 user.isSpotifyPremium(),
                 user.getReferredBy() != null && !user.getReferredBy().isBlank()
                         ? user.getReferredBy()
-                        : null
+                        : null,
+                user.getPushSubscriptionEndpoint(),
+                user.getPushSubscriptionKeysAuth(),
+                user.getPushSubscriptionKeysP256dh()
         );
     }
 
