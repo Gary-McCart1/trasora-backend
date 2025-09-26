@@ -60,7 +60,7 @@ public class AuthController {
     }
 
     /** Utility: validate & resolve current user */
-    private AppUser authenticateRequest(HttpServletRequest request) {
+    public AppUser authenticateRequest(HttpServletRequest request) {
         String token = extractToken(request);
         if (!jwtUtil.validateToken(token)) {
             throw new RuntimeException("Unauthorized: Invalid or missing token");

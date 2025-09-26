@@ -25,4 +25,8 @@ public class UserDto {
     private int branchCount;
     private boolean spotifyPremium;
     private String referredBy;
+    private String pushSubscriptionEndpoint;
+    private String pushSubscriptionKeysP256dh;
+    private String pushSubscriptionKeysAuth;
+
 }

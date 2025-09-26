@@ -85,6 +85,16 @@ public class AppUser {
 
     private String referredBy;
 
+    @Column(length = 2048)
+    private String pushSubscriptionEndpoint;
+
+    @Column(length = 512)
+    private String pushSubscriptionKeysP256dh;
+
+    @Column(length = 512)
+    private String pushSubscriptionKeysAuth;
+
+
     @Column
     private int branchCount;
 }

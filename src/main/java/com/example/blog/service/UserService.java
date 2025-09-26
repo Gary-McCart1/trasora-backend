@@ -1,5 +1,6 @@
 package com.example.blog.service;
 
+import com.example.blog.controller.PushController;
 import com.example.blog.dto.ReferralDto;
 import com.example.blog.dto.UserDto;
 import com.example.blog.entity.AppUser;
@@ -82,7 +83,10 @@ public class UserService {
                 user.isSpotifyPremium(),
                 user.getReferredBy() != null && !user.getReferredBy().isBlank()
                         ? user.getReferredBy()
-                        : null
+                        : null,
+                user.getPushSubscriptionEndpoint(),
+                user.getPushSubscriptionKeysP256dh(),
+                user.getPushSubscriptionKeysAuth()
         );
     }
 
@@ -377,6 +381,18 @@ public class UserService {
     public Optional<AppUser> findByTokenEvenIfNull(String token) {
         return userRepository.findByVerificationToken(token)
                 .or(() -> userRepository.findByEmail(token)); // only works if you pass email instead of random token
+    }
+
+    public void savePushSubscription(String username, PushController.PushSubscriptionRequest sub) {
+        AppUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Serialize subscription as JSON or store fields separately
+        user.setPushSubscriptionEndpoint(sub.getEndpoint());
+        user.setPushSubscriptionKeysP256dh(sub.getKeysP256dh());
+        user.setPushSubscriptionKeysAuth(sub.getKeysAuth());
+
+        userRepository.save(user);
     }
 
 
