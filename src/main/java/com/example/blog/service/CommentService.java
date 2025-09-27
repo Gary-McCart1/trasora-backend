@@ -21,14 +21,16 @@ public class CommentService {
     private final CommentRepository commentRepository;
     private final PostRepository postRepository;
     private final UserRepository userRepository;
+    private final NotificationService notificationService;
 
     public CommentService(CommentRepository commentRepository,
                           PostRepository postRepository,
                           UserRepository userRepository,
-                          NotificationService notificationService) {
+                          NotificationService notificationService, NotificationService notificationService1) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
+        this.notificationService = notificationService1;
     }
 
     private AppUser getCurrentUser() {
@@ -81,6 +83,21 @@ public class CommentService {
                 .post(post)
                 .author(currentUser)
                 .build();
+
+        System.out.println("💬 Adding comment by " + currentUser.getUsername() + " on post " + post.getId() +
+                " (author=" + post.getAuthor().getUsername() + ")");
+
+        notificationService.createNotification(
+                post.getAuthor(),
+                currentUser,
+                NotificationType.COMMENT,
+                post,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
 
         Comment savedComment = commentRepository.save(newComment);
 
