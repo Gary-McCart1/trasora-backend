@@ -37,7 +37,12 @@ public class NotificationService {
             String songArtist,
             String albumArtUrl
     ) {
-        if (recipient.getId().equals(sender.getId())) return null;
+        if (recipient.getId().equals(sender.getId())) {
+            System.out.println("⚠️ Skipping notification: recipient and sender are the same user: " + recipient.getUsername());
+            return null;
+        }
+
+        System.out.println("📩 Creating notification: type=" + type + ", recipient=" + recipient.getUsername() + ", sender=" + sender.getUsername());
 
         Notification notification = new Notification();
         notification.setRecipient(recipient);
@@ -52,9 +57,7 @@ public class NotificationService {
         }
 
         // Follow-based notifications
-        if ((type == NotificationType.FOLLOW ||
-                type == NotificationType.FOLLOW_REQUEST ||
-                type == NotificationType.FOLLOW_ACCEPTED) && follow != null) {
+        if ((type == NotificationType.FOLLOW || type == NotificationType.FOLLOW_REQUEST || type == NotificationType.FOLLOW_ACCEPTED) && follow != null) {
             notification.setFollow(follow);
         }
 
@@ -68,6 +71,7 @@ public class NotificationService {
 
         // Save to DB
         Notification saved = notificationRepository.save(notification);
+        System.out.println("✅ Notification saved with ID: " + saved.getId());
 
         // Send push
         if (recipient.getPushSubscriptionEndpoint() != null) {
@@ -110,11 +114,15 @@ public class NotificationService {
                 }
             }
 
+            System.out.println("🚀 Sending push notification: recipient=" + recipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
             pushNotificationService.sendPushNotification(recipient, title, body, imageUrl, url);
+        } else {
+            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no push subscription. Skipping push notification.");
         }
 
         return saved;
     }
+
 
 
     // =========================
