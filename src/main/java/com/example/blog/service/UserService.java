@@ -383,29 +383,46 @@ public class UserService {
                 .or(() -> userRepository.findByEmail(token)); // only works if you pass email instead of random token
     }
 
-    public void savePushSubscription(String username, PushController.PushSubscriptionRequest sub) {
-        AppUser user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        // Serialize subscription as JSON or store fields separately
-        user.setPushSubscriptionEndpoint(sub.getEndpoint());
-        user.setPushSubscriptionKeysP256dh(sub.getKeysP256dh());
-        user.setPushSubscriptionKeysAuth(sub.getKeysAuth());
-
-        userRepository.save(user);
+    public PushController.PushSubscriptionRequest getPushSubscription(String username) {
+        Optional<AppUser> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            AppUser user = userOpt.get();
+            if (user.getPushSubscriptionEndpoint() == null) {
+                return null;
+            }
+            PushController.PushSubscriptionRequest request = new PushController.PushSubscriptionRequest();
+            request.setEndpoint(user.getPushSubscriptionEndpoint());
+            request.setKeysP256dh(user.getPushSubscriptionKeysP256dh());
+            request.setKeysAuth(user.getPushSubscriptionKeysAuth());
+            return request;
+        }
+        return null;
     }
 
-    public PushController.PushSubscriptionRequest getPushSubscription(String username) {
-        AppUser user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("User not found"));
+    public void savePushSubscription(String username, PushController.PushSubscriptionRequest subscriptionRequest) {
+        Optional<AppUser> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            AppUser user = userOpt.get();
+            user.setPushSubscriptionEndpoint(subscriptionRequest.getEndpoint());
+            user.setPushSubscriptionKeysP256dh(subscriptionRequest.getKeysP256dh());
+            user.setPushSubscriptionKeysAuth(subscriptionRequest.getKeysAuth());
+            userRepository.save(user);
+        }
+    }
 
-        if (user.getPushSubscriptionEndpoint() == null) return null;
-
-        PushController.PushSubscriptionRequest subscription = new PushController.PushSubscriptionRequest();
-        subscription.setEndpoint(user.getPushSubscriptionEndpoint());
-        subscription.setKeysP256dh(user.getPushSubscriptionKeysP256dh());
-        subscription.setKeysAuth(user.getPushSubscriptionKeysAuth());
-        return subscription;
+    public boolean removePushSubscription(String username) {
+        Optional<AppUser> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            AppUser user = userOpt.get();
+            if (user.getPushSubscriptionEndpoint() != null) {
+                user.setPushSubscriptionEndpoint(null);
+                user.setPushSubscriptionKeysP256dh(null);
+                user.setPushSubscriptionKeysAuth(null);
+                userRepository.save(user);
+                return true;
+            }
+        }
+        return false;
     }
 
 

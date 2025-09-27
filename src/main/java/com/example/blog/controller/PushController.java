@@ -36,6 +36,20 @@ public class PushController {
 
         return ResponseEntity.ok("Push subscription saved successfully");
     }
+
+    @DeleteMapping("/unsubscribe")
+    public ResponseEntity<?> unsubscribe(HttpServletRequest request) {
+        AppUser currentUser = authController.authenticateRequest(request);
+
+        boolean success = userService.removePushSubscription(currentUser.getUsername());
+
+        if (success) {
+            return ResponseEntity.ok("Push subscription removed successfully");
+        } else {
+            return ResponseEntity.status(404).body("No push subscription found to remove");
+        }
+    }
+
     @GetMapping("/subscription/{username}")
     public ResponseEntity<?> getSubscription(@PathVariable String username,
                                              HttpServletRequest request) {
@@ -54,5 +68,4 @@ public class PushController {
 
         return ResponseEntity.ok(subscription);
     }
-
 }
