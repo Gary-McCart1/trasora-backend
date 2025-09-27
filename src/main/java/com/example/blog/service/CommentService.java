@@ -84,6 +84,8 @@ public class CommentService {
 
         Comment savedComment = commentRepository.save(newComment);
 
+        System.out.println("Comment created here");
+
         return mapToDto(savedComment);
     }
 
