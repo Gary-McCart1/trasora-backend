@@ -7,6 +7,7 @@ import com.example.blog.entity.Notification;
 import com.example.blog.entity.NotificationType;
 import com.example.blog.entity.Post;
 import com.example.blog.repository.NotificationRepository;
+import jakarta.servlet.ServletOutputStream;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -108,7 +109,7 @@ public class NotificationService {
 
                 }
                 case BRANCH_ADDED -> {
-                    body += "added a song to " + trunkName;
+                    body += "added a song to your trunk!";
                     imageUrl = albumArtUrl;
                 }
             }
@@ -140,6 +141,7 @@ public class NotificationService {
     }
 
     public Notification createCommentNotification(AppUser recipient, AppUser sender, Post post) {
+        System.out.println("Hello");
         return createNotification(recipient, sender, NotificationType.COMMENT, post, null, null, null, null, null);
     }
 
