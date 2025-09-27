@@ -36,4 +36,23 @@ public class PushController {
 
         return ResponseEntity.ok("Push subscription saved successfully");
     }
+    @GetMapping("/subscription/{username}")
+    public ResponseEntity<?> getSubscription(@PathVariable String username,
+                                             HttpServletRequest request) {
+        AppUser currentUser = authController.authenticateRequest(request);
+
+        // Only allow fetching own subscription
+        if (!currentUser.getUsername().equals(username)) {
+            return ResponseEntity.status(403).body("Forbidden");
+        }
+
+        PushSubscriptionRequest subscription = userService.getPushSubscription(username);
+
+        if (subscription == null || subscription.getEndpoint() == null) {
+            return ResponseEntity.status(404).body("No push subscription found");
+        }
+
+        return ResponseEntity.ok(subscription);
+    }
+
 }

@@ -395,5 +395,18 @@ public class UserService {
         userRepository.save(user);
     }
 
+    public PushController.PushSubscriptionRequest getPushSubscription(String username) {
+        AppUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (user.getPushSubscriptionEndpoint() == null) return null;
+
+        PushController.PushSubscriptionRequest subscription = new PushController.PushSubscriptionRequest();
+        subscription.setEndpoint(user.getPushSubscriptionEndpoint());
+        subscription.setKeysP256dh(user.getPushSubscriptionKeysP256dh());
+        subscription.setKeysAuth(user.getPushSubscriptionKeysAuth());
+        return subscription;
+    }
+
 
 }
