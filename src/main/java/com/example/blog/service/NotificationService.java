@@ -78,39 +78,38 @@ public class NotificationService {
             String title = "New " + type.name();
             String body = sender.getUsername() + " ";
             String imageUrl = null;
-            String url = "/"; // default
+            String url = "/notifications"; // default
 
             switch (type) {
                 case LIKE -> {
                     body += "liked your post";
                     if (post != null) {
                         imageUrl = post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl();
-                        url = "/post/" + post.getId();
+
                     }
                 }
                 case COMMENT -> {
                     body += "commented on your post";
                     if (post != null) {
                         imageUrl = post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl();
-                        url = "/post/" + post.getId();
+
                     }
                 }
                 case FOLLOW -> {
                     body += "followed you";
-                    url = "/profile/" + sender.getId();
+
                 }
                 case FOLLOW_REQUEST -> {
                     body += "sent you a follow request";
-                    url = "/profile/" + sender.getId();
+
                 }
                 case FOLLOW_ACCEPTED -> {
                     body += "accepted your follow request";
-                    url = "/profile/" + sender.getId();
+
                 }
                 case BRANCH_ADDED -> {
                     body += "added a song to " + trunkName;
                     imageUrl = albumArtUrl;
-                    url = "/trunk/" + trunkName;
                 }
             }
 
