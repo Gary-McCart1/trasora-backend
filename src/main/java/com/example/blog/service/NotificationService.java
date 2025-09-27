@@ -141,7 +141,6 @@ public class NotificationService {
     }
 
     public Notification createCommentNotification(AppUser recipient, AppUser sender, Post post) {
-        System.out.println("Hello");
         return createNotification(recipient, sender, NotificationType.COMMENT, post, null, null, null, null, null);
     }
 

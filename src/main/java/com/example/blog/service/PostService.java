@@ -248,6 +248,9 @@ public class PostService {
         comment.setAuthor(currentUser);
         commentRepository.save(comment);
 
+        System.out.println("💬 Adding comment by " + currentUser.getUsername() + " on post " + post.getId() +
+                " (author=" + post.getAuthor().getUsername() + ")");
+
         notificationService.createNotification(
                 post.getAuthor(),
                 currentUser,
