@@ -23,10 +23,6 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService;
 
-    /**
-     * Generic notification creator for any type.
-     * Handles Post, Follow, and Branch metadata.
-     */
     public Notification createNotification(
             AppUser recipient,
             AppUser sender,
@@ -38,6 +34,7 @@ public class NotificationService {
             String songArtist,
             String albumArtUrl
     ) {
+        // Skip notifications to self
         if (recipient.getId().equals(sender.getId())) {
             System.out.println("⚠️ Skipping notification: recipient and sender are the same user: " + recipient.getUsername());
             return null;
@@ -52,17 +49,17 @@ public class NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
-        // Post-based notifications
+        // Attach post for like/comment
         if (type == NotificationType.LIKE || type == NotificationType.COMMENT) {
             notification.setPost(post);
         }
 
-        // Follow-based notifications
+        // Attach follow if relevant
         if ((type == NotificationType.FOLLOW || type == NotificationType.FOLLOW_REQUEST || type == NotificationType.FOLLOW_ACCEPTED) && follow != null) {
             notification.setFollow(follow);
         }
 
-        // Branch-based notifications
+        // Attach branch info if relevant
         if (type == NotificationType.BRANCH_ADDED) {
             notification.setTrunkName(trunkName);
             notification.setSongTitle(songTitle);
@@ -74,45 +71,17 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         System.out.println("✅ Notification saved with ID: " + saved.getId());
 
-        // Send push
+        // Send push if recipient has a subscription
         if (recipient.getPushSubscriptionEndpoint() != null) {
-            String title = "New " + type.name();
-            String body = sender.getUsername() + " ";
-            String imageUrl = null;
-            String url = "/notifications"; // default
+            String title = getNotificationTitle(type, sender);
+            String body = getNotificationBody(type, post, songTitle, songArtist);
+            String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
 
-            switch (type) {
-                case LIKE -> {
-                    body += "liked your post";
-                    if (post != null) {
-                        imageUrl = post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl();
-
-                    }
-                }
-                case COMMENT -> {
-                    body += "commented on your post";
-                    if (post != null) {
-                        imageUrl = post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl();
-
-                    }
-                }
-                case FOLLOW -> {
-                    body += "followed you";
-
-                }
-                case FOLLOW_REQUEST -> {
-                    body += "sent you a follow request";
-
-                }
-                case FOLLOW_ACCEPTED -> {
-                    body += "accepted your follow request";
-
-                }
-                case BRANCH_ADDED -> {
-                    body += "added a song to your trunk!";
-                    imageUrl = albumArtUrl;
-                }
-            }
+            String imageUrl = switch (type) {
+                case LIKE, COMMENT -> post != null ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl()) : null;
+                case BRANCH_ADDED -> albumArtUrl;
+                default -> null;
+            };
 
             System.out.println("🚀 Sending push notification: recipient=" + recipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
             pushNotificationService.sendPushNotification(recipient, title, body, imageUrl, url);
@@ -122,6 +91,38 @@ public class NotificationService {
 
         return saved;
     }
+
+    // --- Helper methods ---
+    private String getNotificationTitle(NotificationType type, AppUser sender) {
+        return switch (type) {
+            case LIKE -> sender.getUsername() + " liked your post";
+            case COMMENT -> sender.getUsername() + " commented on your post";
+            case FOLLOW -> sender.getUsername() + " followed you";
+            case FOLLOW_REQUEST -> sender.getUsername() + " sent you a follow request";
+            case FOLLOW_ACCEPTED -> sender.getUsername() + " accepted your follow request";
+            case BRANCH_ADDED -> sender.getUsername() + " added a song to your trunk!";
+        };
+    }
+
+    private String getNotificationBody(NotificationType type, Post post, String songTitle, String songArtist) {
+        return switch (type) {
+            case LIKE, COMMENT -> post != null && post.getText() != null ? post.getText() : "";
+            case BRANCH_ADDED -> songTitle + " by " + songArtist;
+            default -> "";
+        };
+    }
+
+    private String getNotificationUrl(NotificationType type, Long postId, String trunkName) {
+        String frontendBase = System.getenv("FRONTEND_URL");
+        if (frontendBase == null) frontendBase = "https://trasora-frontend-web.vercel.app/"; // fallback
+
+        return switch (type) {
+            case LIKE, COMMENT -> postId != null ? frontendBase + "/post/" + postId : frontendBase + "/notifications";
+            case BRANCH_ADDED -> trunkName != null ? frontendBase + "/trunk/" + trunkName : frontendBase + "/notifications";
+            case FOLLOW, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> frontendBase + "/notifications";
+        };
+    }
+
 
 
 
