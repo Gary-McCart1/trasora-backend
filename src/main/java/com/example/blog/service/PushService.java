@@ -11,7 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
-import java.util.Base64;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -21,7 +21,7 @@ public class PushService {
     private final String bundleId;
 
     public PushService(
-            @Value("${apns.key}") String apnKeyBase64,
+            @Value("${apns.key}") String apnKeyEnvVar,
             @Value("${apns.key-id}") String keyId,
             @Value("${apns.team-id}") String teamId,
             @Value("${apns.bundle-id}") String bundleId,
@@ -29,13 +29,13 @@ public class PushService {
     ) throws Exception {
         this.bundleId = bundleId;
 
-        // Decode the Base64-encoded .p8 key
-        byte[] keyBytes = Base64.getDecoder().decode(apnKeyBase64);
+        // Restore line breaks from Heroku environment variable
+        String keyContent = apnKeyEnvVar.replace("\\n", "\n");
 
         // Create an APNs client using the signing key (.p8)
         ApnsClientBuilder builder = new ApnsClientBuilder()
                 .setSigningKey(ApnsSigningKey.loadFromInputStream(
-                        new ByteArrayInputStream(keyBytes),
+                        new ByteArrayInputStream(keyContent.getBytes(StandardCharsets.UTF_8)),
                         keyId,
                         teamId
                 ));
