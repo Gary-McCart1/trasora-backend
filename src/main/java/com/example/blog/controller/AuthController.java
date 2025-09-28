@@ -402,7 +402,8 @@ public class AuthController {
                         : null,
                 user.getPushSubscriptionEndpoint(),
                 user.getPushSubscriptionKeysAuth(),
-                user.getPushSubscriptionKeysP256dh()
+                user.getPushSubscriptionKeysP256dh(),
+                user.getApnDeviceToken()
         );
     }
 
