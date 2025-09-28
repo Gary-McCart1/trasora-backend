@@ -3,15 +3,14 @@ package com.example.blog.service;
 import com.eatthepath.pushy.apns.ApnsClient;
 import com.eatthepath.pushy.apns.ApnsClientBuilder;
 import com.eatthepath.pushy.apns.PushNotificationResponse;
+import com.eatthepath.pushy.apns.auth.ApnsSigningKey;
 import com.eatthepath.pushy.apns.util.SimpleApnsPayloadBuilder;
 import com.eatthepath.pushy.apns.util.SimpleApnsPushNotification;
 import com.eatthepath.pushy.apns.util.TokenUtil;
-import com.eatthepath.pushy.apns.util.ApnsPayloadBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
-import java.nio.file.Files;
+import java.io.ByteArrayInputStream;
 import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 
@@ -30,15 +29,18 @@ public class PushService {
     ) throws Exception {
         this.bundleId = bundleId;
 
-        // Decode the .p8 key from Base64
-        File tempKeyFile = File.createTempFile("apns", ".p8");
+        // Decode the Base64-encoded .p8 key
         byte[] keyBytes = Base64.getDecoder().decode(apnKeyBase64);
-        Files.write(tempKeyFile.toPath(), keyBytes);
 
+        // Create an APNs client using the signing key (.p8)
         ApnsClientBuilder builder = new ApnsClientBuilder()
-                .setClientCredentials(tempKeyFile, teamId); // <-- use keyId here
+                .setSigningKey(ApnsSigningKey.loadFromInputStream(
+                        new ByteArrayInputStream(keyBytes),
+                        keyId,
+                        teamId
+                ));
 
-
+        // Set environment (sandbox or production)
         if ("sandbox".equalsIgnoreCase(environment)) {
             builder.setApnsServer(ApnsClientBuilder.DEVELOPMENT_APNS_HOST);
         } else {
@@ -51,14 +53,12 @@ public class PushService {
     public CompletableFuture<PushNotificationResponse<SimpleApnsPushNotification>> sendPush(
             String deviceToken, String title, String body
     ) {
-        // Use the concrete builder
         SimpleApnsPayloadBuilder payloadBuilder = new SimpleApnsPayloadBuilder();
         payloadBuilder.setAlertTitle(title);
         payloadBuilder.setAlertBody(body);
         payloadBuilder.setSound("default");
 
-        String payload = payloadBuilder.build(); // build() is available here
-
+        String payload = payloadBuilder.build();
         String token = TokenUtil.sanitizeTokenString(deviceToken);
 
         SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(token, bundleId, payload);
