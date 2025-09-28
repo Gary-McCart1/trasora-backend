@@ -1,13 +1,8 @@
 package com.example.blog.service;
 
 import com.example.blog.dto.NotificationDto;
-import com.example.blog.entity.AppUser;
-import com.example.blog.entity.Follow;
-import com.example.blog.entity.Notification;
-import com.example.blog.entity.NotificationType;
-import com.example.blog.entity.Post;
+import com.example.blog.entity.*;
 import com.example.blog.repository.NotificationRepository;
-import jakarta.servlet.ServletOutputStream;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,7 +16,8 @@ import java.util.stream.Collectors;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
-    private final PushNotificationService pushNotificationService;
+    private final PushNotificationService pushNotificationService; // web push (VAPID)
+    private final PushService pushService; // APNs
 
     public Notification createNotification(
             AppUser recipient,
@@ -49,17 +45,14 @@ public class NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
-        // Attach post for like/comment
         if (type == NotificationType.LIKE || type == NotificationType.COMMENT) {
             notification.setPost(post);
         }
 
-        // Attach follow if relevant
         if ((type == NotificationType.FOLLOW || type == NotificationType.FOLLOW_REQUEST || type == NotificationType.FOLLOW_ACCEPTED) && follow != null) {
             notification.setFollow(follow);
         }
 
-        // Attach branch info if relevant
         if (type == NotificationType.BRANCH_ADDED) {
             notification.setTrunkName(trunkName);
             notification.setSongTitle(songTitle);
@@ -67,32 +60,52 @@ public class NotificationService {
             notification.setAlbumArtUrl(albumArtUrl);
         }
 
-        // Save to DB
+        // Save notification
         Notification saved = notificationRepository.save(notification);
         System.out.println("✅ Notification saved with ID: " + saved.getId());
 
-        // Send push if recipient has a subscription
+        String title = getNotificationTitle(type, sender);
+        String body = getNotificationBody(type, post, songTitle, songArtist);
+        String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
+        String imageUrl = switch (type) {
+            case LIKE, COMMENT -> post != null ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl()) : null;
+            case BRANCH_ADDED -> albumArtUrl;
+            default -> null;
+        };
+
+        // 1️⃣ APNs push
+        if (recipient.getApnDeviceToken() != null) {
+            try {
+                pushService.sendPush(recipient.getApnDeviceToken(), title, body)
+                        .thenAccept(response -> {
+                            if (response.isAccepted()) {
+                                System.out.println("✅ APNs push sent to " + recipient.getUsername());
+                            } else {
+                                System.out.println("⚠️ APNs rejected for " + recipient.getUsername() + ": " + response.getRejectionReason());
+                            }
+                        });
+            } catch (Exception e) {
+                System.err.println("❌ Error sending APNs push to " + recipient.getUsername());
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no APNs device token. Skipping iOS push.");
+        }
+
+        // 2️⃣ Web push (VAPID)
         if (recipient.getPushSubscriptionEndpoint() != null) {
-            String title = getNotificationTitle(type, sender);
-            String body = getNotificationBody(type, post, songTitle, songArtist);
-            String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
-
-            String imageUrl = switch (type) {
-                case LIKE, COMMENT -> post != null ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl()) : null;
-                case BRANCH_ADDED -> albumArtUrl;
-                default -> null;
-            };
-
-            System.out.println("🚀 Sending push notification: recipient=" + recipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
+            System.out.println("🚀 Sending web push: recipient=" + recipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
             pushNotificationService.sendPushNotification(recipient, title, body, imageUrl, url);
         } else {
-            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no push subscription. Skipping push notification.");
+            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no web push subscription. Skipping web push.");
         }
 
         return saved;
     }
 
-    // --- Helper methods ---
+    // -------------------------
+    // Helper methods
+    // -------------------------
     private String getNotificationTitle(NotificationType type, AppUser sender) {
         return switch (type) {
             case LIKE -> sender.getUsername() + " liked your post";
@@ -114,7 +127,7 @@ public class NotificationService {
 
     private String getNotificationUrl(NotificationType type, Long postId, String trunkName) {
         String frontendBase = System.getenv("FRONTEND_URL");
-        if (frontendBase == null) frontendBase = "https://trasora-frontend-web.vercel.app/"; // fallback
+        if (frontendBase == null) frontendBase = "https://trasora-frontend-web.vercel.app/";
 
         return switch (type) {
             case LIKE, COMMENT -> postId != null ? frontendBase + "/post/" + postId : frontendBase + "/notifications";
@@ -122,9 +135,6 @@ public class NotificationService {
             case FOLLOW, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> frontendBase + "/notifications";
         };
     }
-
-
-
 
     // =========================
     // Convenience creators
@@ -145,20 +155,12 @@ public class NotificationService {
         return createNotification(recipient, sender, NotificationType.COMMENT, post, null, null, null, null, null);
     }
 
-    public Notification createBranchNotification(
-            AppUser recipient,
-            AppUser sender,
-            String trunkName,
-            String songTitle,
-            String songArtist,
-            String albumArtUrl
-    ) {
-        return createNotification(recipient, sender, NotificationType.BRANCH_ADDED, null, null,
-                trunkName, songTitle, songArtist, albumArtUrl);
+    public Notification createBranchNotification(AppUser recipient, AppUser sender, String trunkName, String songTitle, String songArtist, String albumArtUrl) {
+        return createNotification(recipient, sender, NotificationType.BRANCH_ADDED, null, null, trunkName, songTitle, songArtist, albumArtUrl);
     }
 
     // =========================
-    // Retrieval and update logic
+    // Retrieval / update logic
     // =========================
 
     public List<Notification> getUnreadNotifications(AppUser recipient) {
@@ -173,9 +175,7 @@ public class NotificationService {
     public void markAsRead(Long notificationId, AppUser recipient) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
-        if (!notification.getRecipient().equals(recipient)) {
-            throw new RuntimeException("Not authorized to mark this notification");
-        }
+        if (!notification.getRecipient().equals(recipient)) throw new RuntimeException("Not authorized");
         if (notification.getType() != NotificationType.FOLLOW_REQUEST) {
             notification.setRead(true);
             notificationRepository.save(notification);
@@ -195,9 +195,7 @@ public class NotificationService {
     public void markFollowRequestAsRead(Long notificationId, AppUser recipient) {
         Notification notification = notificationRepository.findById(notificationId)
                 .orElseThrow(() -> new RuntimeException("Notification not found"));
-        if (!notification.getRecipient().equals(recipient)) {
-            throw new RuntimeException("Not authorized to mark this notification");
-        }
+        if (!notification.getRecipient().equals(recipient)) throw new RuntimeException("Not authorized");
         if (notification.getType() == NotificationType.FOLLOW_REQUEST) {
             notification.setRead(true);
             notificationRepository.save(notification);
@@ -216,15 +214,9 @@ public class NotificationService {
     public void deleteNotificationsForFollow(Follow follow) {
         if (follow == null) return;
         List<Notification> notifications = notificationRepository.findByFollow(follow);
-        if (!notifications.isEmpty()) {
-            notificationRepository.deleteAll(notifications);
-        }
+        if (!notifications.isEmpty()) notificationRepository.deleteAll(notifications);
     }
 
-    /**
-     * Converts Notification entities to DTOs to avoid Hibernate proxy serialization issues.
-     * Includes branch metadata fields.
-     */
     public List<NotificationDto> toDtoList(List<Notification> notifications) {
         return notifications.stream().map(n -> {
             NotificationDto dto = new NotificationDto();
@@ -235,13 +227,10 @@ public class NotificationService {
             dto.setRecipientUsername(n.getRecipient().getUsername());
             dto.setFollowId(n.getFollow() != null ? n.getFollow().getId() : null);
             dto.setCreatedAt(n.getCreatedAt());
-
-            // Add branch info if present
             dto.setTrunkName(n.getTrunkName());
             dto.setSongTitle(n.getSongTitle());
             dto.setSongArtist(n.getSongArtist());
             dto.setAlbumArtUrl(n.getAlbumArtUrl());
-
             return dto;
         }).collect(Collectors.toList());
     }

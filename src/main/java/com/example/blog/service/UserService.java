@@ -86,7 +86,8 @@ public class UserService {
                         : null,
                 user.getPushSubscriptionEndpoint(),
                 user.getPushSubscriptionKeysP256dh(),
-                user.getPushSubscriptionKeysAuth()
+                user.getPushSubscriptionKeysAuth(),
+                user.getApnDeviceToken()
         );
     }
 

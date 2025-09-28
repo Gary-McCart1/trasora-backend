@@ -28,4 +28,5 @@ public class UserDto {
     private String pushSubscriptionEndpoint;
     private String pushSubscriptionKeysP256dh;
     private String pushSubscriptionKeysAuth;
+    private String apnDeviceToken;
 }
