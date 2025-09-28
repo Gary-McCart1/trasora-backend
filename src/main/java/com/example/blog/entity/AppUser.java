@@ -94,6 +94,8 @@ public class AppUser {
     @Column(length = 512)
     private String pushSubscriptionKeysAuth;
 
+    @Column(name = "apn_device_token")
+    private String apnDeviceToken;
 
     @Column
     private int branchCount;

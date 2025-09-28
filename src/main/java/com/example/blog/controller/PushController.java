@@ -7,6 +7,8 @@ import lombok.Data;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/push")
 public class PushController {
@@ -68,4 +70,14 @@ public class PushController {
 
         return ResponseEntity.ok(subscription);
     }
+
+    @PostMapping("/subscribe/apn")
+    public ResponseEntity<?> subscribeApn(@RequestBody Map<String, String> body,
+                                          HttpServletRequest request) {
+        AppUser currentUser = authController.authenticateRequest(request);
+        String deviceToken = body.get("deviceToken");
+        userService.saveApnToken(currentUser.getUsername(), deviceToken);
+        return ResponseEntity.ok("APN token saved");
+    }
+
 }

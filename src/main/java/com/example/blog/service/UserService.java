@@ -425,5 +425,32 @@ public class UserService {
         return false;
     }
 
+    // Save APN device token for a user
+    @Transactional
+    public void saveApnToken(String username, String token) {
+        AppUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setApnDeviceToken(token);
+        userRepository.save(user);
+    }
+
+
+    // Get APN token for a user
+    public Optional<String> getApnToken(String username) {
+        return userRepository.findByUsername(username)
+                .map(AppUser::getApnDeviceToken);
+    }
+
+    // Remove APN token (optional)
+    @Transactional
+    public void removeApnToken(String username) {
+        Optional<AppUser> userOpt = userRepository.findByUsername(username);
+        if (userOpt.isPresent()) {
+            AppUser user = userOpt.get();
+            user.setApnDeviceToken(null);
+            userRepository.save(user);
+        }
+    }
+
 
 }
