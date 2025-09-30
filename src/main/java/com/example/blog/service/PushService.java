@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.interfaces.ECPrivateKey;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -35,20 +36,13 @@ public class PushService {
         System.out.println("🔑 Original APNS key length: " + apnKeyEnvVar.length());
         System.out.println("🔑 KeyId: " + keyId + ", TeamId: " + teamId);
 
-        // Strip BEGIN/END lines and remove whitespace (Apple Music style)
-        String cleanedKey = apnKeyEnvVar
-                .replace("-----BEGIN PRIVATE KEY-----", "")
-                .replace("-----END PRIVATE KEY-----", "")
-                .replaceAll("\\s+", "");
+        // Restore line breaks from Heroku env var
+        String formattedKey = apnKeyEnvVar.trim().replace("\\n", "\n");
+        System.out.println("🔑 Formatted key preview:\n" + formattedKey.substring(0, Math.min(50, formattedKey.length())));
 
-        byte[] keyBytes = Base64.getDecoder().decode(cleanedKey);
-        ECPrivateKey ecPrivateKey = (ECPrivateKey) KeyFactory.getInstance("EC")
-                .generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
-
-        // Build APNs client
         ApnsClientBuilder builder = new ApnsClientBuilder()
                 .setSigningKey(ApnsSigningKey.loadFromInputStream(
-                        new ByteArrayInputStream(keyBytes),
+                        new ByteArrayInputStream(formattedKey.getBytes(StandardCharsets.UTF_8)),
                         keyId,
                         teamId
                 ));
