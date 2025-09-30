@@ -29,18 +29,18 @@ public class PushService {
     ) throws Exception {
         this.bundleId = bundleId;
 
-        // Restore line breaks from Heroku environment variable
-        String keyContent = apnKeyEnvVar.replace("\\n", "\n");
+        // Trim and restore line breaks (\n) from single-line Heroku key
+        String formattedKey = apnKeyEnvVar.trim().replace("\\n", "\n");
 
-        // Create an APNs client using the signing key (.p8)
+        // Create APNs client using the signing key
         ApnsClientBuilder builder = new ApnsClientBuilder()
                 .setSigningKey(ApnsSigningKey.loadFromInputStream(
-                        new ByteArrayInputStream(keyContent.getBytes(StandardCharsets.UTF_8)),
+                        new ByteArrayInputStream(formattedKey.getBytes(StandardCharsets.UTF_8)),
                         keyId,
                         teamId
                 ));
 
-        // Set environment (sandbox or production)
+        // Set environment
         if ("sandbox".equalsIgnoreCase(environment)) {
             builder.setApnsServer(ApnsClientBuilder.DEVELOPMENT_APNS_HOST);
         } else {
