@@ -12,10 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
-import java.security.KeyFactory;
-import java.security.interfaces.ECPrivateKey;
-import java.security.spec.PKCS8EncodedKeySpec;
-import java.util.Base64;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -35,16 +31,35 @@ public class PushService {
 
         System.out.println("🔑 Original APNS key length: " + apnKeyEnvVar.length());
         System.out.println("🔑 KeyId: " + keyId + ", TeamId: " + teamId);
+        System.out.println("🔑 Environment: " + environment);
 
-        // Restore line breaks from Heroku env var
-        String formattedKey = apnKeyEnvVar.trim().replace("\\n", "\n");
-        System.out.println("🔑 Formatted key preview:\n" + formattedKey.substring(0, Math.min(50, formattedKey.length())));
+        // Handle both actual newlines and escaped \n from Heroku
+        String formattedKey = apnKeyEnvVar.trim();
+
+        // If the key doesn't have actual newlines, try replacing escaped ones
+        if (!formattedKey.contains("\n")) {
+            formattedKey = formattedKey.replace("\\n", "\n");
+            System.out.println("🔄 Replaced escaped newlines");
+        } else {
+            System.out.println("✓ Key already has actual newlines");
+        }
+
+        // Verify the key starts and ends correctly
+        if (!formattedKey.startsWith("-----BEGIN PRIVATE KEY-----")) {
+            throw new IllegalArgumentException("Key must start with -----BEGIN PRIVATE KEY-----");
+        }
+        if (!formattedKey.endsWith("-----END PRIVATE KEY-----")) {
+            throw new IllegalArgumentException("Key must end with -----END PRIVATE KEY-----");
+        }
+
+        System.out.println("🔑 Formatted key preview:\n" + formattedKey.substring(0, Math.min(80, formattedKey.length())) + "...");
+        System.out.println("🔑 Key ends with: ..." + formattedKey.substring(Math.max(0, formattedKey.length() - 30)));
 
         ApnsClientBuilder builder = new ApnsClientBuilder()
                 .setSigningKey(ApnsSigningKey.loadFromInputStream(
                         new ByteArrayInputStream(formattedKey.getBytes(StandardCharsets.UTF_8)),
-                        keyId,
-                        teamId
+                        teamId,
+                        keyId
                 ));
 
         if ("sandbox".equalsIgnoreCase(environment)) {
