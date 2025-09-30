@@ -18,6 +18,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService; // web push (VAPID)
     private final PushService pushService; // APNs
+    private final UserService userService; // Dependency we will use to fetch a fresh user object
 
     public Notification createNotification(
             AppUser recipient,
@@ -64,6 +65,11 @@ public class NotificationService {
         Notification saved = notificationRepository.save(notification);
         System.out.println("✅ Notification saved with ID: " + saved.getId());
 
+        // 🚨 FIX: Re-fetch the recipient to ensure the APNs token is loaded from the database.
+        // Assumes userService has a method like findById or similar. You may need to create it.
+        AppUser pushRecipient = userService.findById(recipient.getId())
+                .orElseThrow(() -> new RuntimeException("Recipient user not found for push notification."));
+
         String title = getNotificationTitle(type, sender);
         String body = getNotificationBody(type, post, songTitle, songArtist);
         String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
@@ -73,38 +79,42 @@ public class NotificationService {
             default -> null;
         };
 
-        // 1️⃣ APNs push
-        if (recipient.getApnDeviceToken() != null) {
+        // 1️⃣ APNs push - USE THE FRESHLY FETCHED pushRecipient
+        if (pushRecipient.getApnDeviceToken() != null) {
+            // Optional: Add debug log to confirm token is loaded
+            System.out.println("DEBUG: APNs Token found: " + pushRecipient.getApnDeviceToken().substring(0, 10) + "...");
+
             try {
-                pushService.sendPush(recipient.getApnDeviceToken(), title, body)
+                pushService.sendPush(pushRecipient.getApnDeviceToken(), title, body)
                         .thenAccept(response -> {
                             if (response.isAccepted()) {
-                                System.out.println("✅ APNs push sent to " + recipient.getUsername());
+                                System.out.println("✅ APNs push sent to " + pushRecipient.getUsername());
                             } else {
-                                System.out.println("⚠️ APNs rejected for " + recipient.getUsername() + ": " + response.getRejectionReason());
+                                System.out.println("⚠️ APNs rejected for " + pushRecipient.getUsername() + ": " + response.getRejectionReason());
                             }
                         });
             } catch (Exception e) {
-                System.err.println("❌ Error sending APNs push to " + recipient.getUsername());
+                System.err.println("❌ Error sending APNs push to " + pushRecipient.getUsername());
                 e.printStackTrace();
             }
         } else {
-            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no APNs device token. Skipping iOS push.");
+            // Use the freshly fetched user for logging
+            System.out.println("⚠️ Recipient " + pushRecipient.getUsername() + " has no APNs device token. Skipping iOS push.");
         }
 
-        // 2️⃣ Web push (VAPID)
-        if (recipient.getPushSubscriptionEndpoint() != null) {
-            System.out.println("🚀 Sending web push: recipient=" + recipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
-            pushNotificationService.sendPushNotification(recipient, title, body, imageUrl, url);
+        // 2️⃣ Web push (VAPID) - USE THE FRESHLY FETCHED pushRecipient
+        if (pushRecipient.getPushSubscriptionEndpoint() != null) {
+            System.out.println("🚀 Sending web push: recipient=" + pushRecipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
+            pushNotificationService.sendPushNotification(pushRecipient, title, body, imageUrl, url);
         } else {
-            System.out.println("⚠️ Recipient " + recipient.getUsername() + " has no web push subscription. Skipping web push.");
+            System.out.println("⚠️ Recipient " + pushRecipient.getUsername() + " has no web push subscription. Skipping web push.");
         }
 
         return saved;
     }
 
     // -------------------------
-    // Helper methods
+    // Helper methods (UNCHANGED)
     // -------------------------
     private String getNotificationTitle(NotificationType type, AppUser sender) {
         return switch (type) {
@@ -137,7 +147,7 @@ public class NotificationService {
     }
 
     // =========================
-    // Convenience creators
+    // Convenience creators (UNCHANGED)
     // =========================
     public Notification createFollowRequestNotification(AppUser recipient, AppUser sender, Follow follow) {
         return createNotification(recipient, sender, NotificationType.FOLLOW_REQUEST, null, follow, null, null, null, null);
@@ -160,7 +170,7 @@ public class NotificationService {
     }
 
     // =========================
-    // Retrieval / update logic
+    // Retrieval / update logic (UNCHANGED)
     // =========================
 
     public List<Notification> getUnreadNotifications(AppUser recipient) {

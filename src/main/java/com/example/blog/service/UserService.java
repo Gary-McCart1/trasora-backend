@@ -60,6 +60,10 @@ public class UserService {
         this.mailSender = mailSender;
     }
 
+    public Optional<AppUser> findById(Long id) {
+        return userRepository.findById(id);
+    }
+
     // --- User DTO ---
     public UserDto toUserDTO(AppUser user) {
         int followersCount = getFollowersCount(user.getId());
