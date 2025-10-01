@@ -81,47 +81,56 @@ public class PushService {
             String imageUrl,  // optional album art / profile pic
             String url        // optional link to post or profile
     ) {
-        System.out.println("📲 Preparing rich push for device token: " + deviceToken);
-
+        // Build the payload
         SimpleApnsPayloadBuilder payloadBuilder = new SimpleApnsPayloadBuilder();
+
+        // Basic notification
         payloadBuilder.setAlertTitle(title);
         payloadBuilder.setAlertBody(body);
-        payloadBuilder.setSound("default");
-        payloadBuilder.setMutableContent(true);          // allow media attachments
+        payloadBuilder.setSound("guitar_strum.caf");               // default notification sound
+        payloadBuilder.setMutableContent(true);          // allow rich content like images
         payloadBuilder.setThreadId("trasora-notifications"); // group notifications
 
+        // Badge count (could be dynamic in the future)
+        payloadBuilder.addCustomProperty("badge", 1);
+
+        // Optional media attachment
         if (imageUrl != null) {
-            payloadBuilder.addCustomProperty("image", imageUrl); // frontend can display
+            payloadBuilder.addCustomProperty("image", imageUrl);
         }
+
+        // Optional deep link to open post or profile
         if (url != null) {
-            payloadBuilder.addCustomProperty("url", url); // frontend opens link
+            payloadBuilder.addCustomProperty("url", url);
         }
 
-        String payload = payloadBuilder.build();
-        System.out.println("📝 Payload: " + payload);
+        // Optional category for custom UI/actions on iOS
+        payloadBuilder.addCustomProperty("category", "trasora");
 
+        // Build payload string
+        String payload = payloadBuilder.build();
+        System.out.println("📝 APNs payload: " + payload);
+
+        // Sanitize device token and create notification
         String token = TokenUtil.sanitizeTokenString(deviceToken);
         SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(token, bundleId, payload);
 
-        CompletableFuture<PushNotificationResponse<SimpleApnsPushNotification>> future =
-                apnsClient.sendNotification(pushNotification);
-
-        future.whenComplete((response, throwable) -> {
-            if (throwable != null) {
-                System.err.println("❌ Failed to send push notification:");
-                throwable.printStackTrace();
-            } else {
-                if (response.isAccepted()) {
-                    System.out.println("✅ Push accepted by APNs!");
-                } else {
-                    System.err.println("❌ Push rejected by APNs: " + response.getRejectionReason());
-                    response.getTokenInvalidationTimestamp()
-                            .ifPresent(ts -> System.err.println("Token invalid as of " + ts));
-                }
-            }
-        });
-
-        return future;
+        // Send notification
+        return apnsClient.sendNotification(pushNotification)
+                .whenComplete((response, throwable) -> {
+                    if (throwable != null) {
+                        System.err.println("❌ Failed APNs push:");
+                        throwable.printStackTrace();
+                    } else if (response.isAccepted()) {
+                        System.out.println("✅ APNs push accepted!");
+                    } else {
+                        System.err.println("❌ APNs rejected: " + response.getRejectionReason());
+                        response.getTokenInvalidationTimestamp()
+                                .ifPresent(ts -> System.err.println("Token invalid as of " + ts));
+                    }
+                });
     }
+
+
 
 }
