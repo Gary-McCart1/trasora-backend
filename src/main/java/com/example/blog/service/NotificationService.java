@@ -1,5 +1,8 @@
 package com.example.blog.service;
 
+import com.eatthepath.pushy.apns.util.SimpleApnsPayloadBuilder;
+import com.eatthepath.pushy.apns.util.SimpleApnsPushNotification;
+import com.eatthepath.pushy.apns.util.TokenUtil;
 import com.example.blog.dto.NotificationDto;
 import com.example.blog.entity.*;
 import com.example.blog.repository.NotificationRepository;
@@ -18,7 +21,7 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final PushNotificationService pushNotificationService; // web push (VAPID)
     private final PushService pushService; // APNs
-    private final UserService userService; // Dependency we will use to fetch a fresh user object
+    private final UserService userService; // to fetch fresh user object
 
     public Notification createNotification(
             AppUser recipient,
@@ -46,14 +49,13 @@ public class NotificationService {
         notification.setRead(false);
         notification.setCreatedAt(LocalDateTime.now());
 
-        if (type == NotificationType.LIKE || type == NotificationType.COMMENT) {
+        // Attach relevant entities
+        if (type == NotificationType.LIKE || type == NotificationType.COMMENT || type == NotificationType.FRIEND_POSTED) {
             notification.setPost(post);
         }
-
         if ((type == NotificationType.FOLLOW || type == NotificationType.FOLLOW_REQUEST || type == NotificationType.FOLLOW_ACCEPTED) && follow != null) {
             notification.setFollow(follow);
         }
-
         if (type == NotificationType.BRANCH_ADDED) {
             notification.setTrunkName(trunkName);
             notification.setSongTitle(songTitle);
@@ -61,31 +63,34 @@ public class NotificationService {
             notification.setAlbumArtUrl(albumArtUrl);
         }
 
-        // Save notification
         Notification saved = notificationRepository.save(notification);
         System.out.println("✅ Notification saved with ID: " + saved.getId());
 
-        // 🚨 FIX: Re-fetch the recipient to ensure the APNs token is loaded from the database.
-        // Assumes userService has a method like findById or similar. You may need to create it.
+        // Re-fetch recipient for push
         AppUser pushRecipient = userService.findById(recipient.getId())
                 .orElseThrow(() -> new RuntimeException("Recipient user not found for push notification."));
 
         String title = getNotificationTitle(type, sender);
         String body = getNotificationBody(type, post, songTitle, songArtist);
         String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
+
+        // Determine image for APNs / Web Push
         String imageUrl = switch (type) {
-            case LIKE, COMMENT -> post != null ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl()) : null;
+            case LIKE, COMMENT, FRIEND_POSTED -> post != null
+                    ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl())
+                    : null;
             case BRANCH_ADDED -> albumArtUrl;
+            case FOLLOW, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> sender.getProfilePictureUrl();
             default -> null;
         };
 
-        // 1️⃣ APNs push - USE THE FRESHLY FETCHED pushRecipient
+        // ----------------------------
+        // APNs Push
+        // ----------------------------
         if (pushRecipient.getApnDeviceToken() != null) {
-            // Optional: Add debug log to confirm token is loaded
             System.out.println("DEBUG: APNs Token found: " + pushRecipient.getApnDeviceToken().substring(0, 10) + "...");
-
             try {
-                pushService.sendPush(pushRecipient.getApnDeviceToken(), title, body)
+                pushService.sendPush(pushRecipient.getApnDeviceToken(), title, body, imageUrl, url)
                         .thenAccept(response -> {
                             if (response.isAccepted()) {
                                 System.out.println("✅ APNs push sent to " + pushRecipient.getUsername());
@@ -98,11 +103,12 @@ public class NotificationService {
                 e.printStackTrace();
             }
         } else {
-            // Use the freshly fetched user for logging
             System.out.println("⚠️ Recipient " + pushRecipient.getUsername() + " has no APNs device token. Skipping iOS push.");
         }
 
-        // 2️⃣ Web push (VAPID) - USE THE FRESHLY FETCHED pushRecipient
+        // ----------------------------
+        // Web push (VAPID)
+        // ----------------------------
         if (pushRecipient.getPushSubscriptionEndpoint() != null) {
             System.out.println("🚀 Sending web push: recipient=" + pushRecipient.getUsername() + ", title=" + title + ", body=" + body + ", url=" + url);
             pushNotificationService.sendPushNotification(pushRecipient, title, body, imageUrl, url);
@@ -114,7 +120,7 @@ public class NotificationService {
     }
 
     // -------------------------
-    // Helper methods (UNCHANGED)
+    // Notification titles & bodies
     // -------------------------
     private String getNotificationTitle(NotificationType type, AppUser sender) {
         return switch (type) {
@@ -124,6 +130,7 @@ public class NotificationService {
             case FOLLOW_REQUEST -> sender.getUsername() + " sent you a follow request";
             case FOLLOW_ACCEPTED -> sender.getUsername() + " accepted your follow request";
             case BRANCH_ADDED -> sender.getUsername() + " added a song to your trunk!";
+            case FRIEND_POSTED -> sender.getUsername() + " posted a new track!";
         };
     }
 
@@ -131,6 +138,9 @@ public class NotificationService {
         return switch (type) {
             case LIKE, COMMENT -> post != null && post.getText() != null ? post.getText() : "";
             case BRANCH_ADDED -> songTitle + " by " + songArtist;
+            case FRIEND_POSTED -> post != null && post.getTrackName() != null
+                    ? "Check out " + post.getTrackName() + " by " + post.getArtistName()
+                    : "They shared something new!";
             default -> "";
         };
     }
@@ -140,11 +150,11 @@ public class NotificationService {
         if (frontendBase == null) frontendBase = "https://trasora-frontend-web.vercel.app/";
 
         return switch (type) {
-            case LIKE, COMMENT -> postId != null ? frontendBase + "/post/" + postId : frontendBase + "/notifications";
+            case LIKE, COMMENT, FOLLOW, FRIEND_POSTED, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> frontendBase + "/notifications";
             case BRANCH_ADDED -> trunkName != null ? frontendBase + "/trunk/" + trunkName : frontendBase + "/notifications";
-            case FOLLOW, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> frontendBase + "/notifications";
         };
     }
+
 
     // =========================
     // Convenience creators (UNCHANGED)

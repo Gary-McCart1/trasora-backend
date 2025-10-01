@@ -2,12 +2,10 @@ package com.example.blog.service;
 
 import com.example.blog.dto.CommentDto;
 import com.example.blog.dto.PostDto;
-import com.example.blog.entity.AppUser;
-import com.example.blog.entity.Comment;
-import com.example.blog.entity.NotificationType;
-import com.example.blog.entity.Post;
+import com.example.blog.entity.*;
 import com.example.blog.mapper.PostMapper;
 import com.example.blog.repository.CommentRepository;
+import com.example.blog.repository.FollowRepository;
 import com.example.blog.repository.PostRepository;
 import com.example.blog.repository.UserRepository;
 import org.springframework.stereotype.Service;
@@ -31,13 +29,14 @@ public class PostService {
     private final NotificationService notificationService;
     private final FollowService followService;
     private final CommentService commentService;
+    private final FollowRepository followRepository;
 
     public PostService(PostRepository postRepository,
                        UserRepository userRepository,
                        CommentRepository commentRepository,
                        S3Service s3Service,
                        NotificationService notificationService,
-                       FollowService followService, CommentService commentService) {
+                       FollowService followService, CommentService commentService, FollowRepository followRepository) {
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
@@ -45,6 +44,7 @@ public class PostService {
         this.notificationService = notificationService;
         this.followService = followService;
         this.commentService = commentService;
+        this.followRepository = followRepository;
     }
 
     private String uploadMediaToS3(MultipartFile mediaFile) throws IOException {
@@ -118,7 +118,6 @@ public class PostService {
                     customImageUrl = uploadedUrl;
                 }
             } catch (IOException e) {
-                // Log the exception to get more details on the cause of the failure
                 log.error("Error during media file upload: {}", e.getMessage(), e);
                 throw new RuntimeException("Failed to upload media file", e);
             }
@@ -133,14 +132,11 @@ public class PostService {
                 .trackVolume(postDto.getTrackVolume())
                 .artistName(postDto.getArtistName())
                 .albumArtUrl(postDto.getAlbumArtUrl())
-
                 .appleTrackId(postDto.getAppleTrackId())
                 .appleTrackName(postDto.getAppleTrackName())
                 .appleArtistName(postDto.getAppleArtistName())
                 .appleAlbumArtUrl(postDto.getAppleAlbumArtUrl())
                 .applePreviewUrl(postDto.getApplePreviewUrl())
-
-
                 .customImageUrl(customImageUrl)
                 .customVideoUrl(customVideoUrl)
                 .s3Key(s3Key)
@@ -149,8 +145,30 @@ public class PostService {
                 .branchCount(0)
                 .build();
 
-        return PostMapper.toDto(postRepository.save(post), user);
+        Post savedPost = postRepository.save(post);
+
+        // 🔔 Notify all followers that user posted
+        // Get all accepted follows (these objects contain both follower + following)
+        List<Follow> follows = followRepository.findAllByFollowingAndAcceptedTrue(user);
+
+        // Extract just the follower users
+        for (Follow follow : follows) {
+            AppUser follower = follow.getFollower();
+            if (!follower.getId().equals(user.getId())) { // skip self
+                notificationService.createNotification(
+                        follower,                  // recipient
+                        user,                      // sender (the author)
+                        NotificationType.FRIEND_POSTED,
+                        savedPost,                 // the post itself
+                        null, null, null, null, null
+                );
+            }
+        }
+
+
+        return PostMapper.toDto(savedPost, user);
     }
+
 
     public PostDto editPost(Long id, PostDto postDto, MultipartFile mediaFile) {
         AppUser author = userRepository.findByUsername(postDto.getAuthorUsername())

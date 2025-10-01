@@ -6,5 +6,6 @@ public enum NotificationType {
     FOLLOW,
     FOLLOW_REQUEST,
     FOLLOW_ACCEPTED,
-    BRANCH_ADDED
+    BRANCH_ADDED,
+    FRIEND_POSTED
 }

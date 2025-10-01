@@ -75,21 +75,32 @@ public class PushService {
     }
 
     public CompletableFuture<PushNotificationResponse<SimpleApnsPushNotification>> sendPush(
-            String deviceToken, String title, String body
+            String deviceToken,
+            String title,
+            String body,
+            String imageUrl,  // optional album art / profile pic
+            String url        // optional link to post or profile
     ) {
-        System.out.println("📲 Preparing push for device token: " + deviceToken);
+        System.out.println("📲 Preparing rich push for device token: " + deviceToken);
 
         SimpleApnsPayloadBuilder payloadBuilder = new SimpleApnsPayloadBuilder();
         payloadBuilder.setAlertTitle(title);
         payloadBuilder.setAlertBody(body);
         payloadBuilder.setSound("default");
+        payloadBuilder.setMutableContent(true);          // allow media attachments
+        payloadBuilder.setThreadId("trasora-notifications"); // group notifications
+
+        if (imageUrl != null) {
+            payloadBuilder.addCustomProperty("image", imageUrl); // frontend can display
+        }
+        if (url != null) {
+            payloadBuilder.addCustomProperty("url", url); // frontend opens link
+        }
 
         String payload = payloadBuilder.build();
         System.out.println("📝 Payload: " + payload);
 
         String token = TokenUtil.sanitizeTokenString(deviceToken);
-        System.out.println("🛡 Sanitized token: " + token);
-
         SimpleApnsPushNotification pushNotification = new SimpleApnsPushNotification(token, bundleId, payload);
 
         CompletableFuture<PushNotificationResponse<SimpleApnsPushNotification>> future =
@@ -112,4 +123,5 @@ public class PushService {
 
         return future;
     }
+
 }
