@@ -14,7 +14,7 @@ import java.util.Date;
 @Component
 public class JwtUtil {
     private final String SECRET = "superdupersecretstringthatnooneknowsbutme";
-    private final long ACCESS_TOKEN_EXPIRATION = 1000 * 30;          // 1 hour
+    private final long ACCESS_TOKEN_EXPIRATION = 1000 * 3600;          // 1 hour
     private final long REFRESH_TOKEN_EXPIRATION = 1000L * 60 * 60 * 24 * 31; // 31 days
 
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
