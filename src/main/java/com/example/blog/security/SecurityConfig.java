@@ -57,10 +57,11 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/logout", "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/auth/user/**", "/api/auth/verify-email", "/api/roots/**").permitAll()       // Public profiles
-                        .requestMatchers(HttpMethod.GET, "/auth/spotify/login", "/auth/spotify/callback").permitAll() // Allow Spotify OAuth endpoints
-                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()                 // CORS preflight
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/logout",
+                                "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/refresh").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/user/**", "/api/auth/verify-email", "/api/roots/**").permitAll()
+                        .requestMatchers("/auth/spotify/login", "/auth/spotify/callback").permitAll()
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
                         // Protected endpoints
@@ -69,7 +70,6 @@ public class SecurityConfig {
                         .requestMatchers("/api/follow/**").authenticated()
                         .requestMatchers(HttpMethod.POST, "/api/posts").authenticated()
 
-                        // All other requests require authentication
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
