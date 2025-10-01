@@ -183,14 +183,37 @@ public class FollowService {
     public List<AppUser> getSuggestedFollows(String username) {
         AppUser currentUser = getUserByUsername(username);
 
-        // 1. Try friends-of-friends
+        // 1. Try friends-of-friends suggestions
         List<AppUser> suggestions = followRepository.findSuggestedFollows(currentUser);
 
-        // 2. Fallback: top 3 most-followed users
-        if (suggestions.isEmpty()) {
-            suggestions = followRepository.findTopFollowedUsers(PageRequest.of(0, 3));
+        // 2. Get users already followed by current user (map Follow -> AppUser)
+        List<AppUser> alreadyFollowing = followRepository
+                .findAllByFollowerAndAcceptedTrue(currentUser)
+                .stream()
+                .map(Follow::getFollowing) // get the followed user
+                .toList();
+
+        // 3. Remove already-followed users from suggestions
+        suggestions.removeAll(alreadyFollowing);
+
+        // 4. Ensure at least 3 suggestions using top-followed users
+        if (suggestions.size() < 3) {
+            List<AppUser> topFollowed = followRepository.findTopFollowedUsers(PageRequest.of(0, 10));
+
+            // Exclude current user, already suggested, and already following
+            topFollowed.remove(currentUser);
+            topFollowed.removeAll(suggestions);
+            topFollowed.removeAll(alreadyFollowing);
+
+            for (AppUser user : topFollowed) {
+                if (suggestions.size() >= 3) break;
+                suggestions.add(user);
+            }
         }
 
         return suggestions;
     }
+
+
+
 }
