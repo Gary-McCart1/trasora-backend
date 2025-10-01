@@ -1,5 +1,6 @@
 package com.example.blog.controller;
 
+import com.example.blog.dto.SuggestedUserDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.service.FollowService;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/follow")
@@ -137,9 +139,21 @@ public class FollowController {
     }
 
     @GetMapping("/suggested/{username}")
-    public List<AppUser> getSuggestedFollows(@PathVariable String username) {
-        return followService.getSuggestedFollows(username);
+    public List<SuggestedUserDto> getSuggestedFollows(@PathVariable String username) {
+        List<AppUser> users = followService.getSuggestedFollows(username);
+
+        // Map to lightweight DTO
+        return users.stream()
+                .map(u -> new SuggestedUserDto(
+                        u.getId(),
+                        u.getUsername(),
+                        u.getFullName(),
+                        u.getProfilePictureUrl(),
+                        u.getAccentColor()
+                ))
+                .collect(Collectors.toList());
     }
+
 
 
 
