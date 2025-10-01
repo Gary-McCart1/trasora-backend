@@ -117,21 +117,29 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<?> refresh(@RequestBody Map<String, String> request) {
         String refreshToken = request.get("refreshToken");
+
         if (refreshToken == null || !jwtUtil.validateToken(refreshToken)) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body("Invalid or expired refresh token");
         }
 
+        // ✅ Make sure it's actually a refresh token
+        if (!"refresh".equals(jwtUtil.extractType(refreshToken))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid token type");
+        }
+
         String username = jwtUtil.extractUsername(refreshToken);
 
         String newAccessToken = jwtUtil.generateAccessToken(username);
-        String newRefreshToken = jwtUtil.generateRefreshToken(username); // rotate
+        String newRefreshToken = jwtUtil.generateRefreshToken(username);
 
         return ResponseEntity.ok(Map.of(
                 "accessToken", newAccessToken,
                 "refreshToken", newRefreshToken
         ));
     }
+
 
 
     @PostMapping("/signup")
