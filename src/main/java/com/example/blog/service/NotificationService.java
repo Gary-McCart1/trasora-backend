@@ -71,14 +71,24 @@ public class NotificationService {
                 .orElseThrow(() -> new RuntimeException("Recipient user not found for push notification."));
 
         String title = getNotificationTitle(type, sender);
-        String body = getNotificationBody(type, post, songTitle, songArtist);
+
+        // Ensure body is never empty
+        String body = switch (type) {
+            case LIKE, COMMENT -> post != null && post.getText() != null && !post.getText().isEmpty()
+                    ? post.getText()
+                    : "Someone interacted with your post";
+            case BRANCH_ADDED -> songTitle + " by " + songArtist;
+            case FRIEND_POSTED -> post != null && post.getTrackName() != null
+                    ? "Check out " + post.getTrackName() + " by " + post.getArtistName()
+                    : "They shared something new!";
+            default -> "";
+        };
+
         String url = getNotificationUrl(type, post != null ? post.getId() : null, trunkName);
 
-        // Determine image for APNs / Web Push
+        // Always use albumArtUrl for posts
         String imageUrl = switch (type) {
-            case LIKE, COMMENT, FRIEND_POSTED -> post != null
-                    ? (post.getCustomImageUrl() != null ? post.getCustomImageUrl() : post.getAlbumArtUrl())
-                    : null;
+            case LIKE, COMMENT, FRIEND_POSTED -> post != null ? post.getAlbumArtUrl() : null;
             case BRANCH_ADDED -> albumArtUrl;
             case FOLLOW, FOLLOW_REQUEST, FOLLOW_ACCEPTED -> sender.getProfilePictureUrl();
             default -> null;
@@ -118,6 +128,7 @@ public class NotificationService {
 
         return saved;
     }
+
 
     // -------------------------
     // Notification titles & bodies
