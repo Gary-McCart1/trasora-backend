@@ -6,6 +6,7 @@ import com.example.blog.entity.NotificationType;
 import com.example.blog.repository.FollowRepository;
 import com.example.blog.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -179,4 +180,17 @@ public class FollowService {
     }
 
 
+    public List<AppUser> getSuggestedFollows(String username) {
+        AppUser currentUser = getUserByUsername(username);
+
+        // 1. Try friends-of-friends
+        List<AppUser> suggestions = followRepository.findSuggestedFollows(currentUser);
+
+        // 2. Fallback: top 3 most-followed users
+        if (suggestions.isEmpty()) {
+            suggestions = followRepository.findTopFollowedUsers(PageRequest.of(0, 3));
+        }
+
+        return suggestions;
+    }
 }

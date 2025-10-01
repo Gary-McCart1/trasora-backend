@@ -1,11 +1,13 @@
 package com.example.blog.controller;
 
+import com.example.blog.entity.AppUser;
 import com.example.blog.service.FollowService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -132,6 +134,11 @@ public class FollowController {
 
         followService.rejectFollowRequest(id, userDetails.getUsername());
         return ResponseEntity.ok(Map.of("message", "Follow request rejected"));
+    }
+
+    @GetMapping("/suggested/{username}")
+    public List<AppUser> getSuggestedFollows(@PathVariable String username) {
+        return followService.getSuggestedFollows(username);
     }
 
 

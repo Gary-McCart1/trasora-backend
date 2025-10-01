@@ -3,6 +3,8 @@ package com.example.blog.repository;
 import com.example.blog.entity.AppUser;
 import com.example.blog.entity.Follow;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -41,4 +43,23 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     // Remove a follow relationship (accepted or not)
     void deleteByFollowerAndFollowing(AppUser follower, AppUser following);
+
+    // Suggested follows: people followed by your followees
+    @Query("""
+        SELECT DISTINCT f2.following
+        FROM Follow f1
+        JOIN Follow f2 ON f1.following = f2.follower
+        WHERE f1.follower = :user AND f2.following <> :user AND f2.accepted = true
+    """)
+    List<AppUser> findSuggestedFollows(@Param("user") AppUser user);
+
+    // Top N most-followed users
+    @Query("""
+        SELECT u
+        FROM AppUser u
+        LEFT JOIN Follow f ON f.following = u AND f.accepted = true
+        GROUP BY u
+        ORDER BY COUNT(f.id) DESC
+    """)
+    List<AppUser> findTopFollowedUsers(org.springframework.data.domain.Pageable pageable);
 }
