@@ -82,6 +82,7 @@ public class SecurityConfig {
         configuration.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "https://trasora-frontend-web.vercel.app",
+                "https://trasora.com",
                 "https://fce7b2595774.ngrok-free.app",   // Add your actual ngrok URL here!
                 "https://trasora-backend-e03193d24a86.herokuapp.com"
         ));
