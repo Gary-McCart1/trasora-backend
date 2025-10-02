@@ -147,7 +147,7 @@ public class NotificationService {
 
     private String getNotificationBody(NotificationType type, Post post, String songTitle, String songArtist) {
         return switch (type) {
-            case LIKE, COMMENT -> post != null && post.getText() != null ? post.getText() : "";
+            case LIKE, COMMENT -> "Check it out!";
             case BRANCH_ADDED -> songTitle + " by " + songArtist;
             case FRIEND_POSTED -> post != null && post.getTrackName() != null
                     ? "Check out " + post.getTrackName() + " by " + post.getArtistName()
