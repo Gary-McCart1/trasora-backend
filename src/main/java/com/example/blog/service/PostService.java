@@ -8,6 +8,7 @@ import com.example.blog.repository.CommentRepository;
 import com.example.blog.repository.FollowRepository;
 import com.example.blog.repository.PostRepository;
 import com.example.blog.repository.UserRepository;
+import com.example.blog.util.ProfanityFilter;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -30,13 +31,17 @@ public class PostService {
     private final FollowService followService;
     private final CommentService commentService;
     private final FollowRepository followRepository;
+    private final ProfanityFilter profanityFilter; // <- Added
 
     public PostService(PostRepository postRepository,
                        UserRepository userRepository,
                        CommentRepository commentRepository,
                        S3Service s3Service,
                        NotificationService notificationService,
-                       FollowService followService, CommentService commentService, FollowRepository followRepository) {
+                       FollowService followService,
+                       CommentService commentService,
+                       FollowRepository followRepository,
+                       ProfanityFilter profanityFilter) { // <- Injected
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
@@ -45,6 +50,7 @@ public class PostService {
         this.followService = followService;
         this.commentService = commentService;
         this.followRepository = followRepository;
+        this.profanityFilter = profanityFilter; // <- Assigned
     }
 
     private String uploadMediaToS3(MultipartFile mediaFile) throws IOException {
@@ -103,6 +109,11 @@ public class PostService {
         AppUser user = userRepository.findByUsername(postDto.getAuthorUsername())
                 .orElseThrow(() -> new RuntimeException("No user found with username: " + postDto.getAuthorUsername()));
 
+        // Profanity check
+        if (profanityFilter.containsProfanity(postDto.getText())) {
+            postDto.setText(profanityFilter.censor(postDto.getText()));
+        }
+
         String customImageUrl = null;
         String customVideoUrl = null;
         String s3Key = null;
@@ -147,28 +158,23 @@ public class PostService {
 
         Post savedPost = postRepository.save(post);
 
-        // 🔔 Notify all followers that user posted
-        // Get all accepted follows (these objects contain both follower + following)
+        // Notify followers
         List<Follow> follows = followRepository.findAllByFollowingAndAcceptedTrue(user);
-
-        // Extract just the follower users
         for (Follow follow : follows) {
             AppUser follower = follow.getFollower();
-            if (!follower.getId().equals(user.getId())) { // skip self
+            if (!follower.getId().equals(user.getId())) {
                 notificationService.createNotification(
-                        follower,                  // recipient
-                        user,                      // sender (the author)
+                        follower,
+                        user,
                         NotificationType.FRIEND_POSTED,
-                        savedPost,                 // the post itself
+                        savedPost,
                         null, null, null, null, null
                 );
             }
         }
 
-
         return PostMapper.toDto(savedPost, user);
     }
-
 
     public PostDto editPost(Long id, PostDto postDto, MultipartFile mediaFile) {
         AppUser author = userRepository.findByUsername(postDto.getAuthorUsername())
@@ -182,7 +188,9 @@ public class PostService {
         }
 
         editPost.setTitle(postDto.getTitle());
-        editPost.setText(postDto.getText());
+        // Profanity check
+        editPost.setText(profanityFilter.containsProfanity(postDto.getText()) ? profanityFilter.censor(postDto.getText()) : postDto.getText());
+
         editPost.setTrackId(postDto.getTrackId());
         editPost.setTrackName(postDto.getTrackName());
         editPost.setArtistName(postDto.getArtistName());
@@ -231,9 +239,9 @@ public class PostService {
         boolean alreadyLiked = likedBy.contains(currentUser);
 
         if (alreadyLiked) {
-            likedBy.remove(currentUser); // Unlike
+            likedBy.remove(currentUser);
         } else {
-            likedBy.add(currentUser); // Like
+            likedBy.add(currentUser);
             if (!post.getAuthor().getId().equals(currentUser.getId())) {
                 notificationService.createNotification(
                         post.getAuthor(),
@@ -260,14 +268,16 @@ public class PostService {
             throw new RuntimeException("Cannot comment on a post you cannot view");
         }
 
+        // Profanity filter
+        if (profanityFilter.containsProfanity(commentText)) {
+            commentText = profanityFilter.censor(commentText);
+        }
+
         Comment comment = new Comment();
         comment.setCommentText(commentText);
         comment.setPost(post);
         comment.setAuthor(currentUser);
         commentRepository.save(comment);
-
-        System.out.println("💬 Adding comment by " + currentUser.getUsername() + " on post " + post.getId() +
-                " (author=" + post.getAuthor().getUsername() + ")");
 
         notificationService.createNotification(
                 post.getAuthor(),

@@ -8,6 +8,7 @@ import com.example.blog.entity.Post;
 import com.example.blog.repository.CommentRepository;
 import com.example.blog.repository.PostRepository;
 import com.example.blog.repository.UserRepository;
+import com.example.blog.util.ProfanityFilter;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
@@ -22,15 +23,18 @@ public class CommentService {
     private final PostRepository postRepository;
     private final UserRepository userRepository;
     private final NotificationService notificationService;
+    private final ProfanityFilter profanityFilter;
 
     public CommentService(CommentRepository commentRepository,
                           PostRepository postRepository,
                           UserRepository userRepository,
-                          NotificationService notificationService, NotificationService notificationService1) {
+                          NotificationService notificationService,
+                          ProfanityFilter profanityFilter) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
-        this.notificationService = notificationService1;
+        this.notificationService = notificationService;
+        this.profanityFilter = profanityFilter;
     }
 
     private AppUser getCurrentUser() {
@@ -47,15 +51,14 @@ public class CommentService {
 
     public CommentDto mapToDto(Comment comment) {
         CommentDto dto = new CommentDto();
-        dto.setId(comment.getId());  // <-- populate the comment ID
+        dto.setId(comment.getId());
         dto.setPostId(comment.getPost().getId());
         dto.setCommentText(comment.getCommentText());
-        dto.setAuthorUsername(comment.getAuthor().getUsername());  // <-- populate username
-        dto.setAuthorProfilePictureUrl(comment.getAuthor().getProfilePictureUrl()); // <-- populate profile picture
-        dto.setCreatedAt(comment.getCreatedAt()); // <-- populate creation timestamp
+        dto.setAuthorUsername(comment.getAuthor().getUsername());
+        dto.setAuthorProfilePictureUrl(comment.getAuthor().getProfilePictureUrl());
+        dto.setCreatedAt(comment.getCreatedAt());
         return dto;
     }
-
 
     public List<CommentDto> mapToDtoList(List<Comment> comments) {
         return comments.stream()
@@ -77,6 +80,11 @@ public class CommentService {
 
         Post post = postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found with the ID: " + postId));
+
+        // Profanity filter
+        if (profanityFilter.containsProfanity(commentText)) {
+            commentText = profanityFilter.censor(commentText);
+        }
 
         Comment newComment = Comment.builder()
                 .commentText(commentText)
@@ -100,17 +108,20 @@ public class CommentService {
         );
 
         Comment savedComment = commentRepository.save(newComment);
-
-        System.out.println("Comment created here");
-
         return mapToDto(savedComment);
     }
-
 
     public Comment editComment(Long id, CommentDto commentDto) {
         Comment editComment = commentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Comment not found with the ID: " + id));
-        editComment.setCommentText(commentDto.getCommentText());
+
+        // Profanity filter
+        String updatedText = commentDto.getCommentText();
+        if (profanityFilter.containsProfanity(updatedText)) {
+            updatedText = profanityFilter.censor(updatedText);
+        }
+        editComment.setCommentText(updatedText);
+
         return commentRepository.save(editComment);
     }
 
