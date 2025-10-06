@@ -42,6 +42,6 @@ public class BlockService {
     }
 
     public boolean isBlocked(AppUser viewer, AppUser contentOwner) {
-        return blockRepository.findByBlockerAndBlocked(contentOwner, viewer).isPresent();
+        return blockRepository.findByBlockerAndBlocked(viewer, contentOwner).isPresent();
     }
 }
