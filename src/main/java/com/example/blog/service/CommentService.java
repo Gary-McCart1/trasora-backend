@@ -24,17 +24,20 @@ public class CommentService {
     private final UserRepository userRepository;
     private final NotificationService notificationService;
     private final ProfanityFilter profanityFilter;
+    private final BlockService blockService;
+
 
     public CommentService(CommentRepository commentRepository,
                           PostRepository postRepository,
                           UserRepository userRepository,
                           NotificationService notificationService,
-                          ProfanityFilter profanityFilter) {
+                          ProfanityFilter profanityFilter, BlockService blockService) {
         this.commentRepository = commentRepository;
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.notificationService = notificationService;
         this.profanityFilter = profanityFilter;
+        this.blockService = blockService;
     }
 
     private AppUser getCurrentUser() {
@@ -131,7 +134,14 @@ public class CommentService {
     }
 
     public List<Comment> getCommentByPost(Long postId) {
-        return commentRepository.getCommentByPostId(postId)
+        AppUser currentUser = getCurrentUser();
+        List<Comment> comments = commentRepository.getCommentByPostId(postId)
                 .orElseThrow(() -> new RuntimeException("No comments found under Post ID: " + postId));
+
+        // Filter out comments from blocked users
+        return comments.stream()
+                .filter(comment -> !blockService.isBlocked(currentUser, comment.getAuthor()))
+                .collect(Collectors.toList());
     }
+
 }

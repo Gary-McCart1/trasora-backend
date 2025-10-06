@@ -3,6 +3,7 @@ package com.example.blog.controller;
 import com.example.blog.dto.*;
 import com.example.blog.entity.AppUser;
 import com.example.blog.repository.UserRepository;
+import com.example.blog.service.BlockService;
 import com.example.blog.service.S3Service;
 import com.example.blog.service.UserService;
 import com.example.blog.util.JwtUtil;
@@ -41,7 +42,7 @@ public class AuthController {
 
     public AuthController(AuthenticationManager authenticationManager, JwtUtil jwtUtil,
                           UserService userService, PasswordEncoder passwordEncoder,
-                          S3Service s3Service, UserRepository userRepository) {
+                          S3Service s3Service, UserRepository userRepository, BlockService blockService) {
         this.authenticationManager = authenticationManager;
         this.jwtUtil = jwtUtil;
         this.userService = userService;
@@ -430,4 +431,6 @@ public class AuthController {
                 user.isProfilePublic()
         );
     }
+
+
 }

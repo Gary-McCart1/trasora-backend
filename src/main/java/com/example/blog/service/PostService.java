@@ -32,6 +32,7 @@ public class PostService {
     private final CommentService commentService;
     private final FollowRepository followRepository;
     private final ProfanityFilter profanityFilter; // <- Added
+    private final BlockService blockService;
 
     public PostService(PostRepository postRepository,
                        UserRepository userRepository,
@@ -41,7 +42,7 @@ public class PostService {
                        FollowService followService,
                        CommentService commentService,
                        FollowRepository followRepository,
-                       ProfanityFilter profanityFilter) { // <- Injected
+                       ProfanityFilter profanityFilter, BlockService blockService) { // <- Injected
         this.postRepository = postRepository;
         this.userRepository = userRepository;
         this.commentRepository = commentRepository;
@@ -51,6 +52,7 @@ public class PostService {
         this.commentService = commentService;
         this.followRepository = followRepository;
         this.profanityFilter = profanityFilter; // <- Assigned
+        this.blockService = blockService;
     }
 
     private String uploadMediaToS3(MultipartFile mediaFile) throws IOException {
@@ -298,10 +300,14 @@ public class PostService {
 
     private boolean canViewPost(Post post, AppUser currentUser) {
         AppUser author = post.getAuthor();
+        if (currentUser != null && blockService.isBlocked(currentUser, author)) {
+            return false; // Cannot see posts from blocked users
+        }
         if (author.isProfilePublic()) return true;
         if (currentUser == null) return false;
         return currentUser.getId().equals(author.getId()) || followService.isFollowing(currentUser.getUsername(), author.getId());
     }
+
 
     @Transactional
     public void incrementBranchCount(Long postId, AppUser currentUser) {
