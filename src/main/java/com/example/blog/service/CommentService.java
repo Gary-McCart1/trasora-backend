@@ -135,13 +135,9 @@ public class CommentService {
 
     public List<Comment> getCommentByPost(Long postId) {
         AppUser currentUser = getCurrentUser();
-        List<Comment> comments = commentRepository.getCommentByPostId(postId)
-                .orElseThrow(() -> new RuntimeException("No comments found under Post ID: " + postId));
 
-        // Filter out comments from blocked users
-        return comments.stream()
-                .filter(comment -> !blockService.isBlocked(currentUser, comment.getAuthor()))
-                .collect(Collectors.toList());
+        return commentRepository.getVisibleCommentsByPost(postId, currentUser);
     }
+
 
 }
