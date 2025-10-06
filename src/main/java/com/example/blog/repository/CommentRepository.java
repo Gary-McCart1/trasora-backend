@@ -13,15 +13,14 @@ import java.util.Optional;
 @Repository
 public interface CommentRepository extends JpaRepository<Comment, Long> {
     @Query("""
-        SELECT c FROM Comment c
-        WHERE c.post.id = :postId
-          AND NOT EXISTS (
-              SELECT 1
-              FROM Block b
-              WHERE b.blocker = :currentUser AND b.blocked = c.author
-          )
-        ORDER BY c.createdAt ASC
-    """)
+    SELECT c FROM Comment c
+    LEFT JOIN Block b
+      ON b.blocker = :currentUser AND b.blocked = c.author
+    WHERE c.post.id = :postId
+      AND b.id IS NULL
+    ORDER BY c.createdAt ASC
+""")
     List<Comment> getVisibleCommentsByPost(@Param("postId") Long postId,
                                            @Param("currentUser") AppUser currentUser);
+
 }
