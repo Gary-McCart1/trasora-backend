@@ -24,12 +24,6 @@ public interface PostRepository extends JpaRepository<Post, Long> {
             FROM Follow f
             WHERE f.follower = :currentUser AND f.accepted = true
         ))
-        AND NOT EXISTS (
-            SELECT 1
-            FROM Block b
-            WHERE (b.blocker = :currentUser AND b.blockedUser = p.author)
-               OR (b.blocker = p.author AND b.blockedUser = :currentUser)
-        )
     ORDER BY p.createdAt DESC
 """)
     List<Post> findFeedPosts(@Param("currentUser") AppUser currentUser);
