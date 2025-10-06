@@ -42,10 +42,13 @@ public class AppUser {
     @JsonManagedReference
     private List<Comment> comments = new ArrayList<>();
 
-
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Trunk> trunks = new ArrayList<>();
+
+    @OneToMany(mappedBy = "addedBy", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
+    private List<Branch> branches = new ArrayList<>();
 
     @Column(nullable = false, columnDefinition = "boolean default false")
     private boolean spotifyConnected = false;
