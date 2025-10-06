@@ -353,6 +353,7 @@ public class PostService {
     public List<PostDto> getFeedPosts(AppUser currentUser) {
         return postRepository.findFeedPosts(currentUser)
                 .stream()
+                .filter(post -> !blockService.isBlocked(currentUser, post.getAuthor())) // <-- filter blocked authors
                 .map(post -> PostMapper.toDto(post, currentUser))
                 .collect(Collectors.toList());
     }

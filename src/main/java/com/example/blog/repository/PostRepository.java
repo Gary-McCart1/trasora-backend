@@ -15,17 +15,25 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByOrderByCreatedAtDesc();
 
     @Query("""
-       SELECT p FROM Post p
-       WHERE p.author.isProfilePublic = true
-          OR p.author = :currentUser
-          OR p.author.id IN (
-               SELECT f.following.id
-               FROM Follow f
-               WHERE f.follower = :currentUser AND f.accepted = true
-          )
-       ORDER BY p.createdAt DESC
-       """)
+    SELECT p FROM Post p
+    WHERE 
+        (p.author.isProfilePublic = true
+        OR p.author = :currentUser
+        OR p.author.id IN (
+            SELECT f.following.id
+            FROM Follow f
+            WHERE f.follower = :currentUser AND f.accepted = true
+        ))
+        AND NOT EXISTS (
+            SELECT 1
+            FROM Block b
+            WHERE (b.blocker = :currentUser AND b.blockedUser = p.author)
+               OR (b.blocker = p.author AND b.blockedUser = :currentUser)
+        )
+    ORDER BY p.createdAt DESC
+""")
     List<Post> findFeedPosts(@Param("currentUser") AppUser currentUser);
+
 
     @Query("""
         SELECT p FROM Post p WHERE p.author = :currentUser
