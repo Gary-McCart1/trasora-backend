@@ -24,6 +24,7 @@ public class StoryService {
     private final StoryRepository storyRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final BlockService blockService;
 
     public List<StoryDto> getActiveStories(AppUser currentUser) {
         if (currentUser == null) throw new RuntimeException("Current user cannot be null");
@@ -36,8 +37,10 @@ public class StoryService {
 
         List<Story> activeStories = storyRepository.findByExpiresAtAfterOrderByCreatedAtAsc(now);
         List<Story> filteredStories = activeStories.stream()
-                .filter(story -> followedUsers.contains(story.getAuthor())
+                .filter(story -> (followedUsers.contains(story.getAuthor())
                         || story.getAuthor().equals(currentUser))
+                        // Filter out stories where the author blocked the current user
+                        && !blockService.isBlocked(currentUser, story.getAuthor()))
                 .toList();
 
         return filteredStories.stream()
