@@ -40,7 +40,7 @@ public class StoryService {
                 .filter(story -> (followedUsers.contains(story.getAuthor())
                         || story.getAuthor().equals(currentUser))
                         // Filter out stories where the author blocked the current user
-                        && !blockService.isBlocked(currentUser, story.getAuthor()))
+                        && !blockService.isBlocked(story.getAuthor(), currentUser))
                 .toList();
 
         return filteredStories.stream()

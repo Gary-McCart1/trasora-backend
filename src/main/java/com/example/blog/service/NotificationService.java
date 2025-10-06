@@ -22,6 +22,7 @@ public class NotificationService {
     private final PushNotificationService pushNotificationService; // web push (VAPID)
     private final PushService pushService; // APNs
     private final UserService userService; // to fetch fresh user object
+    private final BlockService blockService;
 
     public Notification createNotification(
             AppUser recipient,
@@ -37,6 +38,9 @@ public class NotificationService {
         // Skip notifications to self
         if (recipient.getId().equals(sender.getId())) {
             System.out.println("⚠️ Skipping notification: recipient and sender are the same user: " + recipient.getUsername());
+            return null;
+        }
+        if(blockService.isBlocked(sender, recipient)){
             return null;
         }
 

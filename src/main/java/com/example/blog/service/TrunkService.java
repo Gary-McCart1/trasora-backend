@@ -24,6 +24,7 @@ public class TrunkService {
     private final UserService userService;
     private final UserRepository userRepository; // Added to get user by username
     private final SpotifyService spotifyService;
+    private final BlockService blockService;
 
     // Create a new trunk with branches
     public TrunkDto createTrunk(TrunkDto dto) {
@@ -157,11 +158,19 @@ public class TrunkService {
     }
 
     public List<TrunkDto> getAvailableTrunksForUser(Long userId) {
-        // 1. Get user’s own trunks
+        AppUser currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // 1. Get user's own trunks
         List<Trunk> ownTrunks = trunkRepository.findByOwnerIdWithBranches(userId);
 
         // 2. Get public trunks of users they follow
-        List<Trunk> followedPublicTrunks = trunkRepository.findPublicTrunksByFollowedUsers(userId);
+        List<Trunk> followedPublicTrunks = trunkRepository.findPublicTrunksByFollowedUsers(userId)
+                .stream()
+                // Exclude trunks from users who have blocked currentUser or whom currentUser has blocked
+                .filter(trunk -> !blockService.isBlocked(currentUser, trunk.getOwner()) &&
+                        !blockService.isBlocked(trunk.getOwner(), currentUser))
+                .collect(Collectors.toList());
 
         // 3. Combine
         List<Trunk> combined = Stream.concat(ownTrunks.stream(), followedPublicTrunks.stream())
@@ -172,6 +181,7 @@ public class TrunkService {
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
     }
+
 
     public TrunkDto updateTrunkTitle(Long trunkId, String title) {
         final AppUser currentUser = userService.getCurrentUser();

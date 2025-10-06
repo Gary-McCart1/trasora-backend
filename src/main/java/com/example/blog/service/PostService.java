@@ -237,6 +237,11 @@ public class PostService {
             throw new RuntimeException("Cannot like a post you cannot view");
         }
 
+        if (blockService.isBlocked(post.getAuthor(), currentUser)) {
+            throw new RuntimeException("You cannot like this post because the author has blocked you");
+        }
+
+
         Set<AppUser> likedBy = post.getLikedBy();
         boolean alreadyLiked = likedBy.contains(currentUser);
 
@@ -317,6 +322,9 @@ public class PostService {
         if (!canViewPost(post, currentUser)) {
             throw new RuntimeException("Cannot branch a post you cannot view");
         }
+        if (blockService.isBlocked(post.getAuthor(), currentUser)) {
+            throw new RuntimeException("You cannot branch this post because the author has blocked you");
+        }
 
         post.setBranchCount(post.getBranchCount() + 1);
 
@@ -353,7 +361,7 @@ public class PostService {
     public List<PostDto> getFeedPosts(AppUser currentUser) {
         return postRepository.findFeedPosts(currentUser)
                 .stream()
-                .filter(post -> !blockService.isBlocked(currentUser, post.getAuthor())) // <-- filter blocked authors
+                .filter(post -> !blockService.isBlocked(post.getAuthor(), currentUser)) // <-- filter blocked authors
                 .map(post -> PostMapper.toDto(post, currentUser))
                 .collect(Collectors.toList());
     }
