@@ -11,7 +11,7 @@ public class ProfanityFilter {
     // Example word list – expand as needed
     private final List<String> bannedWords = Arrays.asList(
             "ass", "asshole", "bastard", "bitch", "bollocks", "bugger", "cunt",
-            "damn", "dick", "douche", "fuck", "fucker", "fucking", "hell", "jerk",
+            "damn", "dick", "douche", "fuck", "fucker", "fucking", "jerk",
             "motherfucker", "nigga", "nigger", "prick", "piss", "shit", "shitty",
             "slut", "twat", "whore", "wanker"
     );

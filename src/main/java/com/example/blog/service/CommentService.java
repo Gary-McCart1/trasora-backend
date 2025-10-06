@@ -89,6 +89,10 @@ public class CommentService {
             commentText = profanityFilter.censor(commentText);
         }
 
+        if (blockService.isBlocked(post.getAuthor(), currentUser)) {
+            throw new RuntimeException("You are blocked by this user and cannot comment on their posts");
+        }
+
         Comment newComment = Comment.builder()
                 .commentText(commentText)
                 .post(post)
