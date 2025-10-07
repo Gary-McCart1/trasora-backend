@@ -1,8 +1,11 @@
 package com.example.blog.controller;
 
+import com.example.blog.entity.AppUser;
 import com.example.blog.entity.Flag;
+import com.example.blog.repository.UserRepository;
 import com.example.blog.service.FlagService;
 import com.example.blog.service.UserService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -12,38 +15,49 @@ import java.util.List;
 public class FlagController {
 
     private final FlagService flagService;
-    private final UserService userService;
+    private final UserRepository userRepository;
 
-    public FlagController(FlagService flagService, UserService userService) {
+    public FlagController(FlagService flagService, UserRepository userRepository) {
         this.flagService = flagService;
-        this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/post/{postId}")
-    public Flag flagPost(@PathVariable Long postId, @RequestParam String reason) {
-        Long reporterId = userService.getCurrentUser().getId();
-        return flagService.flagPost(reporterId, postId, reason);
+    public ResponseEntity<?> flagPost(
+            @PathVariable Long postId,
+            @RequestParam Long reporterId,
+            @RequestParam String reason) {
+
+        AppUser reporter = userRepository.findById(reporterId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        flagService.flagPost(postId, reporter, reason);
+        return ResponseEntity.ok("Post flagged successfully");
     }
 
     @PostMapping("/comment/{commentId}")
-    public Flag flagComment(@PathVariable Long commentId, @RequestParam String reason) {
-        Long reporterId = userService.getCurrentUser().getId();
-        return flagService.flagComment(reporterId, commentId, reason);
+    public ResponseEntity<?> flagComment(
+            @PathVariable Long commentId,
+            @RequestParam Long reporterId,
+            @RequestParam String reason) {
+
+        AppUser reporter = userRepository.findById(reporterId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        flagService.flagComment(commentId, reporter, reason);
+        return ResponseEntity.ok("Comment flagged successfully");
     }
 
     @PostMapping("/story/{storyId}")
-    public Flag flagStory(@PathVariable Long storyId, @RequestParam String reason) {
-        Long reporterId = userService.getCurrentUser().getId();
-        return flagService.flagStory(reporterId, storyId, reason);
-    }
+    public ResponseEntity<?> flagStory(
+            @PathVariable Long storyId,
+            @RequestParam Long reporterId,
+            @RequestParam String reason) {
 
-    @GetMapping("/unreviewed")
-    public List<Flag> getUnreviewedFlags() {
-        return flagService.getUnreviewedFlags();
-    }
+        AppUser reporter = userRepository.findById(reporterId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
-    @PostMapping("/{flagId}/reviewed")
-    public void markFlagReviewed(@PathVariable Long flagId) {
-        flagService.markFlagReviewed(flagId);
+        flagService.flagStory(storyId, reporter, reason);
+        return ResponseEntity.ok("Story flagged successfully");
     }
 }
