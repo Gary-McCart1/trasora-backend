@@ -37,9 +37,6 @@ public class Flag {
     @Column(nullable = false)
     private String reason; // e.g. "Hate speech", "Spam", etc.
 
-    @Column(nullable = false)
-    private LocalDateTime createdAt;
-
     @Builder.Default
     private boolean reviewed = false; // Marked true when admin reviews it
 }
