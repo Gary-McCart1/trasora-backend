@@ -46,6 +46,7 @@ public class FlagService {
         flag.setReporter(reporter);
         flag.setPost(post);
         flag.setReason(reason);
+        flag.setReportedUser(post.getAuthor());
         flagRepository.save(flag);
 
         post.setFlagCount(post.getFlagCount() + 1);
