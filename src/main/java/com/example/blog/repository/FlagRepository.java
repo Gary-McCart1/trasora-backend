@@ -17,4 +17,6 @@ public interface FlagRepository extends JpaRepository<Flag, Long> {
     boolean existsByReporterAndPost(AppUser reporter, Post post);
     boolean existsByReporterAndComment(AppUser reporter, Comment comment);
     boolean existsByReporterAndStory(AppUser reporter, Story story);
+
+    int countByReportedUser(AppUser reportedUser);
 }

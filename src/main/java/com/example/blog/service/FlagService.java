@@ -17,6 +17,7 @@ public class FlagService {
     private final CommentRepository commentRepository;
     private final StoryRepository storyRepository;
     private final JavaMailSender mailSender;
+    private final UserRepository userRepository;
 
     // how many flags before auto-hide
     private static final int FLAG_THRESHOLD = 3;
@@ -25,12 +26,13 @@ public class FlagService {
                        PostRepository postRepository,
                        CommentRepository commentRepository,
                        StoryRepository storyRepository,
-                       JavaMailSender mailSender) {
+                       JavaMailSender mailSender, UserRepository userRepostory, UserRepository userRepository) {
         this.flagRepository = flagRepository;
         this.postRepository = postRepository;
         this.commentRepository = commentRepository;
         this.storyRepository = storyRepository;
         this.mailSender = mailSender;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -47,6 +49,7 @@ public class FlagService {
         flag.setPost(post);
         flag.setReason(reason);
         flag.setReportedUser(post.getAuthor()); // <-- must set this
+        flag.setCreatedAt(LocalDateTime.now());
         flagRepository.save(flag);
 
         post.setFlagCount(post.getFlagCount() + 1);
@@ -54,6 +57,12 @@ public class FlagService {
         if (post.getFlagCount() >= FLAG_THRESHOLD) {
             post.setHidden(true);
             sendModerationAlertEmail("Post", postId);
+        }
+        int totalFlags = flagRepository.countByReportedUser(post.getAuthor());
+
+        if (totalFlags >= 10) {
+            post.getAuthor().setBanned(true);
+            userRepository.save(post.getAuthor());
         }
 
         postRepository.save(post);
@@ -74,6 +83,7 @@ public class FlagService {
         flag.setComment(comment);
         flag.setReason(reason);
         flag.setReportedUser(comment.getAuthor());
+        flag.setCreatedAt(LocalDateTime.now());
         flagRepository.save(flag);
 
         comment.setFlagCount(comment.getFlagCount() + 1);
@@ -81,6 +91,12 @@ public class FlagService {
         if (comment.getFlagCount() >= FLAG_THRESHOLD) {
             comment.setHidden(true);
             sendModerationAlertEmail("Comment", commentId);
+        }
+        int totalFlags = flagRepository.countByReportedUser(comment.getAuthor());
+
+        if (totalFlags >= 10) {
+            comment.getAuthor().setBanned(true);
+            userRepository.save(comment.getAuthor());
         }
 
         commentRepository.save(comment);
@@ -100,6 +116,7 @@ public class FlagService {
         flag.setStory(story);
         flag.setReason(reason);
         flag.setReportedUser(story.getAuthor());
+        flag.setCreatedAt(LocalDateTime.now());
         flagRepository.save(flag);
 
         story.setFlagCount(story.getFlagCount() + 1);
@@ -109,11 +126,18 @@ public class FlagService {
             sendModerationAlertEmail("Story", storyId);
         }
 
+        int totalFlags = flagRepository.countByReportedUser(story.getAuthor());
+
+        if (totalFlags >= 10) {
+            story.getAuthor().setBanned(true);
+            userRepository.save(story.getAuthor());
+        }
+
         storyRepository.save(story);
     }
 
     private void sendModerationAlertEmail(String contentType, Long contentId) {
-        String to = "trasora.team@gmail.com";
+        String to = "trasoramusic@gmail.com";
         String subject = "🚨 Content Auto-Hidden for Review (" + contentType + ")";
         String text = "The following " + contentType.toLowerCase() +
                 " (ID: " + contentId + ") has been flagged multiple times and was auto-hidden.\n\n" +

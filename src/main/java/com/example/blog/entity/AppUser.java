@@ -107,4 +107,7 @@ public class AppUser {
 
     @Column
     private int branchCount;
+
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean banned;
 }

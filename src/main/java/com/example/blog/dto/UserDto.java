@@ -29,4 +29,5 @@ public class UserDto {
     private String pushSubscriptionKeysP256dh;
     private String pushSubscriptionKeysAuth;
     private String apnDeviceToken;
+    private boolean banned;
 }

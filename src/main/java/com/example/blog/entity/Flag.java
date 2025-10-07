@@ -39,4 +39,8 @@ public class Flag {
 
     @Builder.Default
     private boolean reviewed = false; // Marked true when admin reviews it
+
+    private LocalDateTime createdAt;
+
+    private boolean resolved = false;
 }

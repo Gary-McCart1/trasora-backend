@@ -76,6 +76,10 @@ public class AuthController {
     public ResponseEntity<?> getCurrentUser(HttpServletRequest request) {
         try {
             AppUser user = authenticateRequest(request);
+            if(user.isBanned()){
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You have been banned for violating our terms of service. Please email trasoramusic@gmail.com to file a claim to be unbanned.");
+            }
             return ResponseEntity.ok(mapToUserDto(user));
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
@@ -95,6 +99,10 @@ public class AuthController {
             if (!user.isVerified()) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                         .body("Please verify your email before logging in.");
+            }
+            if(user.isBanned()){
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body("You have been banned for violating our terms of service. Please email trasoramusic@gmail.com to file a claim to be unbanned.");
             }
 
             // Generate both tokens
@@ -412,7 +420,8 @@ public class AuthController {
                 user.getPushSubscriptionEndpoint(),
                 user.getPushSubscriptionKeysAuth(),
                 user.getPushSubscriptionKeysP256dh(),
-                user.getApnDeviceToken()
+                user.getApnDeviceToken(),
+                user.isBanned()
         );
     }
 
