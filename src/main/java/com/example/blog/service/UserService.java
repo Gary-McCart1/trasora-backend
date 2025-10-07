@@ -91,7 +91,8 @@ public class UserService {
                 user.getPushSubscriptionEndpoint(),
                 user.getPushSubscriptionKeysP256dh(),
                 user.getPushSubscriptionKeysAuth(),
-                user.getApnDeviceToken()
+                user.getApnDeviceToken(),
+                user.isBanned()
         );
     }
 
