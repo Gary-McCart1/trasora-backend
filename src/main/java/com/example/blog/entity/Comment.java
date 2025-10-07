@@ -33,6 +33,9 @@ public class Comment {
     @JsonBackReference
     private AppUser author; // store reference to user entity
 
+    private int flagCount = 0;
+    private boolean hidden = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 }

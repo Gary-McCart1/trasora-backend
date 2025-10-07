@@ -46,6 +46,9 @@ public class Story {
 
     private String caption;       // optional caption
 
+    private int flagCount = 0;
+    private boolean hidden = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt; // auto-set to 24h from createdAt

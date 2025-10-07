@@ -40,6 +40,9 @@ public class PostDto {
     private List<CommentDto> comments;
     private int branchCount;
     private boolean isPublic;
+
+    private boolean hidden;
+    private int flagCount;
 }
 
 

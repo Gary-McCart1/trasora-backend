@@ -11,4 +11,6 @@ public class CommentDto {
     private String commentText;
     private Long postId;
     private LocalDateTime createdAt;
+    private boolean hidden;
+    private int flagCount;
 }

@@ -35,4 +35,6 @@ public class StoryDto {
     private LocalDateTime expiresAt;
 
     private boolean viewed;     // has the current user viewed this story
+    private boolean hidden;
+    private int flagCount;
 }

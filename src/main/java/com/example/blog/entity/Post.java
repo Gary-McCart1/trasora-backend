@@ -76,6 +76,9 @@ public class Post {
     @JsonIgnore
     private List<Notification> notifications = new ArrayList<>();
 
+    private int flagCount = 0;
+    private boolean hidden = false;
+
     public boolean isLikedByUser(AppUser user) {
         return likedBy.contains(user);
     }

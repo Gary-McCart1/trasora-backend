@@ -206,6 +206,4 @@ public class TrunkService {
         trunk.setPublicFlag(publicFlag);
         return mapToDto(trunkRepository.save(trunk));
     }
-
-
 }
