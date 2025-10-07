@@ -15,29 +15,35 @@ public interface PostRepository extends JpaRepository<Post, Long> {
     List<Post> findAllByOrderByCreatedAtDesc();
 
     @Query("""
-    SELECT p FROM Post p
-    WHERE 
-        (p.author.isProfilePublic = true
-        OR p.author = :currentUser
-        OR p.author.id IN (
-            SELECT f.following.id
-            FROM Follow f
-            WHERE f.follower = :currentUser AND f.accepted = true
-        ))
-    ORDER BY p.createdAt DESC
-""")
+        SELECT p FROM Post p
+        WHERE 
+            (p.author.isProfilePublic = true
+            OR p.author = :currentUser
+            OR p.author.id IN (
+                SELECT f.following.id
+                FROM Follow f
+                WHERE f.follower = :currentUser AND f.accepted = true
+            ))
+            AND p.flagCount < 3
+        ORDER BY p.createdAt DESC
+    """)
     List<Post> findFeedPosts(@Param("currentUser") AppUser currentUser);
 
-
     @Query("""
-        SELECT p FROM Post p WHERE p.author = :currentUser
-        AND p.customVideoUrl = NULL
+        SELECT p FROM Post p
+        WHERE p.author = :currentUser
+          AND p.customVideoUrl IS NULL
+          AND p.flagCount < 3
+        ORDER BY p.createdAt DESC
     """)
     List<Post> findImagePosts(@Param("currentUser") AppUser currentUser);
 
     @Query("""
-        SELECT p FROM Post p WHERE p.author = :currentUser
-        AND p.customImageUrl = NULL
+        SELECT p FROM Post p
+        WHERE p.author = :currentUser
+          AND p.customImageUrl IS NULL
+          AND p.flagCount < 3
+        ORDER BY p.createdAt DESC
     """)
     List<Post> findVideoPosts(@Param("currentUser") AppUser currentUser);
 }

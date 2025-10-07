@@ -18,9 +18,11 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
       ON b.blocker = :currentUser AND b.blocked = c.author
     WHERE c.post.id = :postId
       AND b.id IS NULL
+      AND c.flagCount < 3
     ORDER BY c.createdAt ASC
 """)
     List<Comment> getVisibleCommentsByPost(@Param("postId") Long postId,
                                            @Param("currentUser") AppUser currentUser);
+
 
 }

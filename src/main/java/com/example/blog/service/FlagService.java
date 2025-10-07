@@ -73,6 +73,7 @@ public class FlagService {
         flag.setReporter(reporter);
         flag.setComment(comment);
         flag.setReason(reason);
+        flag.setReportedUser(comment.getAuthor());
         flagRepository.save(flag);
 
         comment.setFlagCount(comment.getFlagCount() + 1);
@@ -98,6 +99,7 @@ public class FlagService {
         flag.setReporter(reporter);
         flag.setStory(story);
         flag.setReason(reason);
+        flag.setReportedUser(story.getAuthor());
         flagRepository.save(flag);
 
         story.setFlagCount(story.getFlagCount() + 1);
