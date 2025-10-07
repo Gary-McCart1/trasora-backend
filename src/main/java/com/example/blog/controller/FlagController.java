@@ -1,14 +1,13 @@
 package com.example.blog.controller;
 
 import com.example.blog.entity.AppUser;
-import com.example.blog.entity.Flag;
-import com.example.blog.repository.UserRepository;
 import com.example.blog.service.FlagService;
-import com.example.blog.service.UserService;
+import com.example.blog.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/flags")
@@ -23,41 +22,59 @@ public class FlagController {
     }
 
     @PostMapping("/post/{postId}")
-    public ResponseEntity<?> flagPost(
+    public ResponseEntity<Map<String, Object>> flagPost(
             @PathVariable Long postId,
             @RequestParam Long reporterId,
-            @RequestParam String reason) {
-
+            @RequestParam String reason
+    ) {
         AppUser reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         flagService.flagPost(postId, reporter, reason);
-        return ResponseEntity.ok("Post flagged successfully");
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Post flagged successfully.");
+        response.put("postId", postId);
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/comment/{commentId}")
-    public ResponseEntity<?> flagComment(
+    public ResponseEntity<Map<String, Object>> flagComment(
             @PathVariable Long commentId,
             @RequestParam Long reporterId,
-            @RequestParam String reason) {
-
+            @RequestParam String reason
+    ) {
         AppUser reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         flagService.flagComment(commentId, reporter, reason);
-        return ResponseEntity.ok("Comment flagged successfully");
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Comment flagged successfully.");
+        response.put("commentId", commentId);
+
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/story/{storyId}")
-    public ResponseEntity<?> flagStory(
+    public ResponseEntity<Map<String, Object>> flagStory(
             @PathVariable Long storyId,
             @RequestParam Long reporterId,
-            @RequestParam String reason) {
-
+            @RequestParam String reason
+    ) {
         AppUser reporter = userRepository.findById(reporterId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         flagService.flagStory(storyId, reporter, reason);
-        return ResponseEntity.ok("Story flagged successfully");
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("message", "Story flagged successfully.");
+        response.put("storyId", storyId);
+
+        return ResponseEntity.ok(response);
     }
 }

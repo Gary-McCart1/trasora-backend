@@ -46,7 +46,7 @@ public class FlagService {
         flag.setReporter(reporter);
         flag.setPost(post);
         flag.setReason(reason);
-        flag.setReportedUser(post.getAuthor());
+        flag.setReportedUser(post.getAuthor()); // <-- must set this
         flagRepository.save(flag);
 
         post.setFlagCount(post.getFlagCount() + 1);
@@ -58,6 +58,7 @@ public class FlagService {
 
         postRepository.save(post);
     }
+
 
     @Transactional
     public void flagComment(Long commentId, AppUser reporter, String reason) {
