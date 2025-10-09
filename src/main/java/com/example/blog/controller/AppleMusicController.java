@@ -137,7 +137,7 @@ public class AppleMusicController {
             String query = trackName + " " + artistName;
             String url = "https://api.spotify.com/v1/search?q=" +
                     URLEncoder.encode(query, StandardCharsets.UTF_8) +
-                    "&type=track&limit=1";
+                    "&type=track&limit=10"; // increase limit to find exact match
 
             HttpHeaders headers = new HttpHeaders();
             headers.set("Authorization", "Bearer " + spotifyAuthService.getAccessToken());
@@ -157,14 +157,21 @@ public class AppleMusicController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No Spotify track found");
             }
 
-            Map<String, Object> track = items.get(0);
-            Map<String, Object> album = (Map<String, Object>) track.get("album");
+            // Find exact match for track name and artist name
+            Map<String, Object> bestMatch = items.stream()
+                    .filter(t -> ((String) t.get("name")).equalsIgnoreCase(trackName)
+                            && ((List<Map<String, Object>>) t.get("artists")).stream()
+                            .anyMatch(a -> ((String) a.get("name")).equalsIgnoreCase(artistName)))
+                    .findFirst()
+                    .orElse(items.get(0)); // fallback to first if no exact match
+
+            Map<String, Object> album = (Map<String, Object>) bestMatch.get("album");
 
             // Build minimal response
             Map<String, Object> spotifyData = new HashMap<>();
-            spotifyData.put("id", track.get("id"));
-            spotifyData.put("name", track.get("name"));
-            spotifyData.put("artistName", ((List<Map<String, Object>>) track.get("artists"))
+            spotifyData.put("id", bestMatch.get("id"));
+            spotifyData.put("name", bestMatch.get("name"));
+            spotifyData.put("artistName", ((List<Map<String, Object>>) bestMatch.get("artists"))
                     .stream()
                     .map(a -> a.get("name"))
                     .findFirst()
@@ -174,7 +181,7 @@ public class AppleMusicController {
                             ? ((List<Map<String, Object>>) album.get("images")).get(0).get("url")
                             : null
             );
-            spotifyData.put("previewUrl", track.get("preview_url"));
+            spotifyData.put("previewUrl", bestMatch.get("preview_url"));
 
             return ResponseEntity.ok(spotifyData);
 
@@ -183,6 +190,7 @@ public class AppleMusicController {
                     .body("Spotify API error: " + e.getMessage());
         }
     }
+
 
 
 
