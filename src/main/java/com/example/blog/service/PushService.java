@@ -63,9 +63,11 @@ public class PushService {
                 ));
 
         if ("sandbox".equalsIgnoreCase(environment)) {
+            System.out.println(environment);
             builder.setApnsServer(ApnsClientBuilder.DEVELOPMENT_APNS_HOST);
             System.out.println("🌱 Using Sandbox APNs server");
         } else {
+            System.out.println(environment);
             builder.setApnsServer(ApnsClientBuilder.PRODUCTION_APNS_HOST);
             System.out.println("🏭 Using Production APNs server");
         }
