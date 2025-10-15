@@ -81,7 +81,7 @@ public class NotificationService {
             case LIKE, COMMENT -> post != null && post.getText() != null && !post.getText().isEmpty()
                     ? post.getText()
                     : "Someone interacted with your post";
-            case BRANCH_ADDED -> post.getTrackName() + " by " + post.getArtistName();
+            case BRANCH_ADDED -> songTitle + " by " + songArtist;
             case FRIEND_POSTED -> post != null && post.getTrackName() != null
                     ? "Check out " + post.getTrackName() + " by " + post.getArtistName()
                     : "They shared something new!";
