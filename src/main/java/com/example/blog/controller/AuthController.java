@@ -225,8 +225,13 @@ public class AuthController {
             }
             AppUser referredByUser = null;
             if (referredUsername != null) {
-                referredByUser = userRepository.findByUsername(referredUsername)
-                        .orElseThrow(() -> new RuntimeException("Referrer not found"));
+                if (referredUsername.equals(currentUser.getUsername())){
+                    throw new RuntimeException("You cannot refer yourself.");
+                } else {
+                    referredByUser = userRepository.findByUsername(referredUsername)
+                            .orElseThrow(() -> new RuntimeException("Referrer not found"));
+                }
+
             }
 
             AppUser updatedUser = userService.editUser(
