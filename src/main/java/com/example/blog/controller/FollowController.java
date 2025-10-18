@@ -155,11 +155,13 @@ public class FollowController {
                 .collect(Collectors.toList());
     }
 
+    @GetMapping("/{username}/followers")
     public ResponseEntity<List<Follow>> getFollowers(@PathVariable String username,
                                                      @AuthenticationPrincipal UserDetails userDetails){
         return ResponseEntity.ok(followService.getFollowers(username));
     }
 
+    @GetMapping("/{username}/following")
     public ResponseEntity<List<Follow>> getFollowing(@PathVariable String username,
                                                 @AuthenticationPrincipal UserDetails userDetails){
         return ResponseEntity.ok(followService.getFollowing(username));
