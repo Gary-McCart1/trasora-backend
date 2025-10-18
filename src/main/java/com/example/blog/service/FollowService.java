@@ -1,5 +1,6 @@
 package com.example.blog.service;
 
+import com.example.blog.dto.UserDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.entity.Follow;
 import com.example.blog.entity.NotificationType;
@@ -66,14 +67,52 @@ public class FollowService {
         }
     }
 
-    public List<Follow> getFollowers(String username){
-        AppUser user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
-        return followRepository.findAllByFollowingAndAcceptedTrue(user);
+    public List<UserDto> getFollowers(String username) {
+        AppUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
+
+        List<Follow> followers = followRepository.findAllByFollowingAndAcceptedTrue(user);
+
+        return followers.stream()
+                .map(f -> mapToDto(f.getFollower()))
+                .toList();
     }
 
-    public List<Follow> getFollowing(String username){
-        AppUser user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
-        return followRepository.findAllByFollowerAndAcceptedTrue(user);
+    public List<UserDto> getFollowing(String username) {
+        AppUser user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
+
+        List<Follow> following = followRepository.findAllByFollowerAndAcceptedTrue(user);
+
+        return following.stream()
+                .map(f -> mapToDto(f.getFollowing()))
+                .toList();
+    }
+
+    private UserDto mapToDto(AppUser user) {
+        return new UserDto(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getUsername(),
+                user.getBio(),
+                user.getJoinedAt(),
+                user.getProfilePictureUrl(),
+                user.getRole(),
+                user.getFollowers().size(), // or a query for count
+                user.getFollowing().size(), // or a query for count
+                user.getAccentColor(),
+                user.isSpotifyConnected(),
+                user.isProfilePublic(),
+                user.getBranchCount(),
+                user.isSpotifyPremium(),
+                user.getReferredBy(),
+                user.getPushSubscriptionEndpoint(),
+                user.getPushSubscriptionKeysP256dh(),
+                user.getPushSubscriptionKeysAuth(),
+                user.getApnDeviceToken(),
+                user.isBanned()
+        );
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.example.blog.controller;
 
 import com.example.blog.dto.SuggestedUserDto;
+import com.example.blog.dto.UserDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.entity.Follow;
 import com.example.blog.service.FollowService;
@@ -156,13 +157,13 @@ public class FollowController {
     }
 
     @GetMapping("/{username}/followers")
-    public ResponseEntity<List<Follow>> getFollowers(@PathVariable String username,
-                                                     @AuthenticationPrincipal UserDetails userDetails){
+    public ResponseEntity<List<UserDto>> getFollowers(@PathVariable String username,
+                                                      @AuthenticationPrincipal UserDetails userDetails){
         return ResponseEntity.ok(followService.getFollowers(username));
     }
 
     @GetMapping("/{username}/following")
-    public ResponseEntity<List<Follow>> getFollowing(@PathVariable String username,
+    public ResponseEntity<List<UserDto>> getFollowing(@PathVariable String username,
                                                 @AuthenticationPrincipal UserDetails userDetails){
         return ResponseEntity.ok(followService.getFollowing(username));
     }
