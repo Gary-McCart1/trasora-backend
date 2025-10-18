@@ -2,6 +2,7 @@ package com.example.blog.controller;
 
 import com.example.blog.dto.SuggestedUserDto;
 import com.example.blog.entity.AppUser;
+import com.example.blog.entity.Follow;
 import com.example.blog.service.FollowService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -154,6 +155,15 @@ public class FollowController {
                 .collect(Collectors.toList());
     }
 
+    public ResponseEntity<List<Follow>> getFollowers(@PathVariable String username,
+                                                     @AuthenticationPrincipal UserDetails userDetails){
+        return ResponseEntity.ok(followService.getFollowers(username));
+    }
+
+    public ResponseEntity<List<Follow>> getFollowing(@PathVariable String username,
+                                                @AuthenticationPrincipal UserDetails userDetails){
+        return ResponseEntity.ok(followService.getFollowing(username));
+    }
 
 
 

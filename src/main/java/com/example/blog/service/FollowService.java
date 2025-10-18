@@ -66,6 +66,16 @@ public class FollowService {
         }
     }
 
+    public List<Follow> getFollowers(String username){
+        AppUser user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
+        return followRepository.findAllByFollowingAndAcceptedTrue(user);
+    }
+
+    public List<Follow> getFollowing(String username){
+        AppUser user = userRepository.findByUsername(username).orElseThrow(() -> new RuntimeException("No user found with the username: " + username));
+        return followRepository.findAllByFollowerAndAcceptedTrue(user);
+    }
+
     /**
      * Accepts a pending follow request and marks notification as read.
      */
