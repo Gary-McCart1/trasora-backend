@@ -156,6 +156,7 @@ public class AuthController {
         AppUser newUser = userService.registerUser(authRequest.getEmail(), authRequest.getUsername(),
                 authRequest.getPassword(), authRequest.getFullName());
 
+        System.out.println(authRequest.getFullName());
         String token = userService.createVerificationToken(newUser);
         userService.sendVerificationEmail(newUser.getEmail(), token);
 
