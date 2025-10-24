@@ -143,7 +143,7 @@ public class SpotifyController {
             }
 
             // Fetch posts by this user
-            List<PostDto> posts = postService.getPosts(currentUser);
+            List<PostDto> posts = postService.getPostsByAuthor(currentUser.getUsername(), currentUser);
             if (posts == null || posts.isEmpty()) {
                 logger.info("No posts found for user {}", currentUser.getUsername());
                 return ResponseEntity.ok(Collections.emptyList());
