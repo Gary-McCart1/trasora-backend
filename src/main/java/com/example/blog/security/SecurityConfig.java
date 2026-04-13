@@ -59,8 +59,8 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/logout",
                                 "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/refresh").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/auth/user/**", "/api/auth/verify-email", "/api/auth/referral-leaderboard", "/api/roots/**").permitAll()
-                        .requestMatchers("/auth/spotify/login", "/auth/spotify/callback", "/api/auth/users/profiles").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/auth/user/**", "/api/auth/verify-email", "/api/auth/referral-leaderboard", "/api/roots/**", "/api/auth/users/profiles").permitAll()
+                        .requestMatchers("/auth/spotify/login", "/auth/spotify/callback").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
