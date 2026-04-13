@@ -39,6 +39,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.startsWith("/auth/spotify") ||
                 path.startsWith("/api/auth/login") ||
                 path.startsWith("/api/auth/signup") ||
+                path.startsWith("/api/auth/users/profiles") ||
                 path.startsWith("/api/auth/logout")) {
             filterChain.doFilter(request, response);
             return;

@@ -183,6 +183,11 @@ public class AuthController {
         return ResponseEntity.ok(users.stream().map(this::mapToUserDto).toList());
     }
 
+    @GetMapping("/users/profiles")
+    public ResponseEntity<List<UserDto>> getProfiles(){
+        return ResponseEntity.ok(userService.getSocialProofUsers());
+    }
+
     @DeleteMapping("/user/{username}")
     public ResponseEntity<?> deleteUser(@PathVariable String username, HttpServletRequest request) {
         try {

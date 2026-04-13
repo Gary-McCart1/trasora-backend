@@ -143,6 +143,16 @@ public class UserService {
         return userRepository.findAll();
     }
 
+    public List<UserDto> getSocialProofUsers() {
+        // Querying for users with profile pictures, non-empty, and not banned
+        return userRepository.findAll().stream()
+                .filter(user -> user.getProfilePictureUrl() != null && !user.getProfilePictureUrl().isBlank())
+                .filter(user -> !user.isBanned())
+                .limit(5)
+                .map(this::toUserDTO)
+                .toList();
+    }
+
     public AppUser getCurrentUser() {
         String username = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByUsername(username)
