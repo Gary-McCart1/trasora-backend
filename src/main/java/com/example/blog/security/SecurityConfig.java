@@ -57,7 +57,7 @@ public class SecurityConfig {
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/signup", "/api/auth/logout",
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/users/profiles", "/api/auth/signup", "/api/auth/logout",
                                 "/api/auth/forgot-password", "/api/auth/reset-password", "/api/auth/refresh").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/auth/user/**", "/api/auth/verify-email", "/api/auth/referral-leaderboard", "/api/roots/**").permitAll()
                         .requestMatchers("/auth/spotify/login", "/auth/spotify/callback").permitAll()
