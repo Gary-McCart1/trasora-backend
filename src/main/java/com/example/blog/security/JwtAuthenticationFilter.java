@@ -10,12 +10,11 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
-@Component
+// 🎯 REMOVE @Component here
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
@@ -27,23 +26,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        // Use servletPath for more consistent matching
+        return path.equals("/api/auth/login") ||
+                path.equals("/api/auth/signup") ||
+                path.equals("/api/auth/users/profiles") ||
+                path.startsWith("/auth/spotify") ||
+                path.equals("/api/auth/verify-email");
+    }
+
+    @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
                                     FilterChain filterChain)
             throws ServletException, IOException {
-
-        String path = request.getRequestURI();
-
-        // Skip JWT validation for OPTIONS and public auth endpoints
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod()) ||
-                path.startsWith("/auth/spotify") ||
-                path.startsWith("/api/auth/login") ||
-                path.startsWith("/api/auth/signup") ||
-                path.startsWith("/api/auth/users/profiles") ||
-                path.startsWith("/api/auth/logout")) {
-            filterChain.doFilter(request, response);
-            return;
-        }
 
         String jwt = jwtUtil.extractTokenFromHeader(request);
         String username = null;
@@ -52,21 +49,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 username = jwtUtil.extractUsername(jwt);
             } catch (Exception e) {
-                // Invalid token → skip auth (will result in 401 later if endpoint requires auth)
+                // Invalid token? Just continue. The SecurityFilterChain will block if needed.
             }
         }
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             if (jwtUtil.validateToken(jwt)) {
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
                                 userDetails,
                                 null,
                                 userDetails.getAuthorities()
                         );
-
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
