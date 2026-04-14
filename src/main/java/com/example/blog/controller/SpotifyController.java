@@ -57,6 +57,7 @@ public class SpotifyController {
             return ResponseEntity.ok(exploreData);
         } catch (Exception e) {
             logger.error("Failed to fetch explore data", e);
+            spotifyAuthService.refreshAccessToken();
             exploreData.put("featuredTracks", Collections.emptyList());
             exploreData.put("newReleases", Collections.emptyList());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exploreData);

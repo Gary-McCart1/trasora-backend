@@ -36,29 +36,43 @@ public class SpotifyAuthService {
         return cachedAccessToken;
     }
 
-    private void refreshAccessToken() {
+    public void refreshAccessToken() {
         String url = "https://accounts.spotify.com/api/token";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
 
+        // Create the authorization header
         String auth = clientId + ":" + clientSecret;
         String encodedAuth = Base64.getEncoder().encodeToString(auth.getBytes());
         headers.set("Authorization", "Basic " + encodedAuth);
 
+        // Prepare the body for the refresh request
         String body = "grant_type=refresh_token&refresh_token=" + refreshToken;
         HttpEntity<String> entity = new HttpEntity<>(body, headers);
 
-        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
+        try {
+            // Send the refresh token request
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
+            Map<String, Object> responseBody = response.getBody();
 
-        Map<String, Object> responseBody = response.getBody();
-        if (responseBody != null) {
-            cachedAccessToken = (String) responseBody.get("access_token");
-            int expiresIn = (Integer) responseBody.get("expires_in");
-            tokenExpiryTime = System.currentTimeMillis() + (expiresIn - 60) * 1000L;
-            logger.info("Spotify token refreshed successfully");
-        } else {
-            throw new RuntimeException("Failed to refresh Spotify access token");
+            // Check the response
+            if (responseBody != null && responseBody.containsKey("access_token")) {
+                cachedAccessToken = (String) responseBody.get("access_token");
+                int expiresIn = (Integer) responseBody.get("expires_in");
+
+                // Calculate token expiry time (subtract 60 seconds as a buffer)
+                tokenExpiryTime = System.currentTimeMillis() + (expiresIn - 60) * 1000L;
+
+                logger.info("Spotify token refreshed successfully. Expires in {} seconds", expiresIn);
+            } else {
+                // Log the full response for debugging
+                logger.error("Failed to refresh token. Response body: {}", responseBody);
+                throw new RuntimeException("Failed to refresh Spotify access token");
+            }
+        } catch (Exception e) {
+            logger.error("Error refreshing Spotify access token", e);
+            throw new RuntimeException("Error refreshing Spotify access token", e);
         }
     }
 }
