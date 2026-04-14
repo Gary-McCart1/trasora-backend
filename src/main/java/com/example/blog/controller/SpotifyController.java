@@ -39,33 +39,40 @@ public class SpotifyController {
     @GetMapping("/explore")
     public ResponseEntity<?> getExploreContent() {
         Map<String, Object> exploreData = new HashMap<>();
+
         try {
-            // Use global Spotify account for explore page
-            String globalAccessToken = spotifyAuthService.getAccessToken(); // NEW METHOD
-            Map<String, Object> rawData = fetchExploreData(globalAccessToken);
+            String accessToken = spotifyAuthService.getAccessToken();
+            Map<String, Object> rawData = fetchExploreData(accessToken);
 
             List<Map<String, Object>> featuredTracks =
                     (List<Map<String, Object>>) rawData.getOrDefault("featuredTracks", Collections.emptyList());
+
             Collections.shuffle(featuredTracks);
-            exploreData.put("featuredTracks", featuredTracks.subList(0, Math.min(20, featuredTracks.size())));
+            exploreData.put("featuredTracks",
+                    featuredTracks.subList(0, Math.min(20, featuredTracks.size())));
 
             List<Map<String, Object>> newReleases =
                     (List<Map<String, Object>>) rawData.getOrDefault("newReleases", Collections.emptyList());
+
             Collections.shuffle(newReleases);
-            exploreData.put("newReleases", newReleases.subList(0, Math.min(20, newReleases.size())));
+            exploreData.put("newReleases",
+                    newReleases.subList(0, Math.min(20, newReleases.size())));
 
             return ResponseEntity.ok(exploreData);
+
         } catch (Exception e) {
             logger.error("Failed to fetch explore data", e);
-            spotifyAuthService.refreshAccessToken();
+
             exploreData.put("featuredTracks", Collections.emptyList());
             exploreData.put("newReleases", Collections.emptyList());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exploreData);
+
+            return ResponseEntity.ok(exploreData); // IMPORTANT: return 200, not 500
         }
     }
 
 
     private Map<String, Object> fetchExploreData(String accessToken) {
+
         HttpHeaders headers = new HttpHeaders();
         headers.setBearerAuth(accessToken);
         HttpEntity<Void> entity = new HttpEntity<>(headers);
@@ -73,34 +80,62 @@ public class SpotifyController {
         Map<String, Object> exploreData = new HashMap<>();
         Random rand = new Random();
 
-        // Featured tracks
+        // -------------------------
+        // FEATURED TRACKS (KEEP)
+        // -------------------------
         try {
             int offset = rand.nextInt(50);
-            String searchUrl = "https://api.spotify.com/v1/search?q=year:2025&type=track&limit=50&offset=" + offset;
+
+            String searchUrl =
+                    "https://api.spotify.com/v1/search?q=year:2024&type=track&limit=50&offset=" + offset;
+
             ResponseEntity<Map> searchResponse =
                     restTemplate.exchange(searchUrl, HttpMethod.GET, entity, Map.class);
 
+            Map<String, Object> body = searchResponse.getBody();
+
+            Map<String, Object> tracksObj =
+                    (Map<String, Object>) body.get("tracks");
+
             List<Map<String, Object>> tracks =
-                    (List<Map<String, Object>>) ((Map<String, Object>) searchResponse.getBody().get("tracks")).get("items");
+                    (List<Map<String, Object>>) tracksObj.get("items");
 
             Collections.shuffle(tracks);
-            exploreData.put("featuredTracks", tracks.subList(0, Math.min(20, tracks.size())));
+
+            exploreData.put("featuredTracks",
+                    tracks.subList(0, Math.min(20, tracks.size())));
+
         } catch (Exception e) {
-            logger.warn("Failed to fetch top tracks: {}", e.getMessage());
+            logger.warn("Failed to fetch featured tracks: {}", e.getMessage());
             exploreData.put("featuredTracks", Collections.emptyList());
         }
 
-        // New releases
+        // -------------------------
+        // NEW RELEASES (FIXED)
+        // -------------------------
         try {
             int offset = rand.nextInt(50);
-            String url = "https://api.spotify.com/v1/browse/new-releases?country=US&limit=20&offset=" + offset;
-            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
 
-            Map<String, Object> albumsObj = (Map<String, Object>) response.getBody().get("albums");
-            List<Map<String, Object>> albums = (List<Map<String, Object>>) albumsObj.get("items");
+            // SAFE replacement for /browse/new-releases
+            String url =
+                    "https://api.spotify.com/v1/search?q=tag:new&type=album&limit=50&offset=" + offset;
+
+            ResponseEntity<Map> response =
+                    restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+
+            Map<String, Object> body = response.getBody();
+
+            Map<String, Object> albumsObj =
+                    (Map<String, Object>) body.get("albums");
+
+            List<Map<String, Object>> albums =
+                    (List<Map<String, Object>>) albumsObj.get("items");
 
             Collections.shuffle(albums);
-            exploreData.put("newReleases", albums.subList(0, Math.min(20, albums.size())));
+
+            exploreData.put("newReleases",
+                    albums.subList(0, Math.min(20, albums.size())));
+
         } catch (Exception e) {
             logger.warn("Failed to fetch new releases: {}", e.getMessage());
             exploreData.put("newReleases", Collections.emptyList());

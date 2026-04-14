@@ -29,6 +29,7 @@ public class SpotifyAuthService {
     private long tokenExpiryTime = 0; // epoch ms
 
     public String getAccessToken() {
+
         long now = System.currentTimeMillis();
         if (cachedAccessToken == null || now >= tokenExpiryTime) {
             refreshAccessToken();

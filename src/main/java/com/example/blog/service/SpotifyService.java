@@ -82,6 +82,7 @@ public class SpotifyService {
     }
 
     private synchronized String getAppAccessToken() {
+
         if (cachedToken != null && tokenExpiry != null && Instant.now().isBefore(tokenExpiry)) {
             return cachedToken;
         }
