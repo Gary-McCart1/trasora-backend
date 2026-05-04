@@ -24,7 +24,7 @@ public class ShareController {
             response.sendRedirect("trasora://create");
         } else {
             // Web fallback
-            response.sendRedirect("https://trasora.com/create");
+            response.sendRedirect("https://www.trasora.com/create");
         }
     }
 }
