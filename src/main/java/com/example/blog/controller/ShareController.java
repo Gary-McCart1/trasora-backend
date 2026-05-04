@@ -21,10 +21,10 @@ public class ShareController {
 
         if (isIOS) {
             // Try to open the iOS app
-            response.sendRedirect("trasora://create-post");
+            response.sendRedirect("trasora://create");
         } else {
             // Web fallback
-            response.sendRedirect("https://trasora.com/create-post");
+            response.sendRedirect("https://trasora.com/create");
         }
     }
 }
