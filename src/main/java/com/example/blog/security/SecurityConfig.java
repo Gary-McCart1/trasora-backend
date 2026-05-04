@@ -65,7 +65,7 @@ public class SecurityConfig {
                         .requestMatchers("/auth/spotify/login", "/auth/spotify/callback").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/error").permitAll()
-
+                        .requestMatchers("/share").permitAll()
                         // Protected endpoints
                         .requestMatchers(HttpMethod.GET, "/api/auth/me").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/auth/user/**").authenticated()
