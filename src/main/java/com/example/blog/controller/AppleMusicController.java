@@ -7,6 +7,7 @@ import com.example.blog.service.AppleMusicTokenService;
 import com.example.blog.service.SpotifyAuthService;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLEncoder;
@@ -111,9 +112,10 @@ public class AppleMusicController {
                     + "&types=songs&limit=25";
             ResponseEntity<Map> response = appleMusicGet(url);
             return ResponseEntity.ok(response.getBody()); }
-        catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Apple Music API error: " + e.getMessage());
+        catch (HttpStatusCodeException e) {
+            System.out.println(e.getResponseBodyAsString());
+            return ResponseEntity.status(e.getStatusCode())
+                    .body(e.getResponseBodyAsString());
         }
     } @GetMapping("/tracks/{trackId}")
     public ResponseEntity<?> getTrackById(@PathVariable String trackId) {
