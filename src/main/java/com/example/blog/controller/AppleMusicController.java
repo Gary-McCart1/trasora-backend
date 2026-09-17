@@ -5,6 +5,7 @@ import com.example.blog.entity.Post;
 import com.example.blog.repository.PostRepository;
 import com.example.blog.service.AppleMusicTokenService;
 import com.example.blog.service.SpotifyAuthService;
+import com.example.blog.service.SpotifyClientCredentialsService;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.HttpStatusCodeException;
@@ -22,11 +23,13 @@ public class AppleMusicController {
     private final RestTemplate restTemplate = new RestTemplate();
     private final PostRepository postRepository;
     private final SpotifyAuthService spotifyAuthService;
+    private final SpotifyClientCredentialsService spotifyClientCredentialsService;
 
-    public AppleMusicController(AppleMusicTokenService tokenService, PostRepository postRepository, SpotifyAuthService spotifyAuthService) {
+    public AppleMusicController(AppleMusicTokenService tokenService, PostRepository postRepository, SpotifyAuthService spotifyAuthService, SpotifyClientCredentialsService spotifyClientCredentialsService) {
         this.tokenService = tokenService;
         this.postRepository = postRepository;
         this.spotifyAuthService = spotifyAuthService;
+        this.spotifyClientCredentialsService = spotifyClientCredentialsService;
     }
 
     private ResponseEntity<Map> appleMusicGet(String url) {
@@ -142,7 +145,7 @@ public class AppleMusicController {
                     "&type=track&limit=10"; // increase limit to find exact match
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + spotifyAuthService.getAccessToken());
+            headers.set("Authorization", "Bearer " + spotifyClientCredentialsService.getAccessToken());
             headers.set("Accept", "application/json");
 
             HttpEntity<String> entity = new HttpEntity<>(headers);
