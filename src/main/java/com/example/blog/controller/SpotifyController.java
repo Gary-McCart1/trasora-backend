@@ -133,7 +133,7 @@ public class SpotifyController {
     public ResponseEntity<?> getRecommendationsFromPosts() {
         try {
             // Use global Spotify account token
-            String globalAccessToken = spotifyAuthService.getAccessToken();
+            String globalAccessToken = spotifyClientCredentialsService.getAccessToken();
 
             // Get current user
             AppUser currentUser = userService.getCurrentUser();
