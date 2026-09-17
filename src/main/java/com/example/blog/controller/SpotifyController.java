@@ -4,10 +4,7 @@ import com.example.blog.dto.PostDto;
 import com.example.blog.dto.TrunkDto;
 import com.example.blog.entity.AppUser;
 import com.example.blog.repository.UserRepository;
-import com.example.blog.service.PostService;
-import com.example.blog.service.TrunkService;
-import com.example.blog.service.SpotifyAuthService;
-import com.example.blog.service.UserService;
+import com.example.blog.service.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,14 +32,16 @@ public class SpotifyController {
     private final SpotifyAuthService spotifyAuthService;
     private final UserService userService;
 
+    private final SpotifyClientCredentialsService spotifyClientCredentialsService;
+
     // --- Explore ---
     @GetMapping("/explore")
     public ResponseEntity<?> getExploreContent() {
         Map<String, Object> exploreData = new HashMap<>();
         try {
             // Use global Spotify account for explore page
-            String globalAccessToken = spotifyAuthService.getAccessToken(); // NEW METHOD
-            Map<String, Object> rawData = fetchExploreData(globalAccessToken);
+            String accessToken = spotifyClientCredentialsService.getAccessToken();
+            Map<String, Object> rawData = fetchExploreData(accessToken);
 
             List<Map<String, Object>> featuredTracks =
                     (List<Map<String, Object>>) rawData.getOrDefault("featuredTracks", Collections.emptyList());
@@ -57,7 +56,7 @@ public class SpotifyController {
             return ResponseEntity.ok(exploreData);
         } catch (Exception e) {
             logger.error("Failed to fetch explore data", e);
-            spotifyAuthService.refreshAccessToken();
+
             exploreData.put("featuredTracks", Collections.emptyList());
             exploreData.put("newReleases", Collections.emptyList());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(exploreData);
